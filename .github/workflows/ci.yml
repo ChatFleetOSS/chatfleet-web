@@ -45,10 +45,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NEXT_PUBLIC_API_BASE=/api
+      - name: Set IMAGE_TAG env
+        run: echo "IMAGE_TAG=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_ENV
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
       - name: Trivy scan
-        run: trivy image --severity HIGH,CRITICAL --ignore-unfixed --no-progress $(docker images --format '{{.Repository}}:{{.Tag}}' | head -n1)
+        run: trivy image --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE_TAG"
         continue-on-error: true
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -58,8 +60,9 @@ jobs:
       - name: SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: $(docker images --format '{{.Repository}}:{{.Tag}}' | head -n1)
+          image: ${{ env.IMAGE_TAG }}
           artifact-name: sbom-web-spdx.json
+        continue-on-error: true
 
   push-sign:
     needs: build-test-scan
