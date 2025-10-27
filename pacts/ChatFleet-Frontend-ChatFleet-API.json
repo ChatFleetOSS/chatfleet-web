@@ -1,0 +1,340 @@
+{
+  "consumer": {
+    "name": "ChatFleet-Frontend"
+  },
+  "interactions": [
+    {
+      "description": "a delete RAG request",
+      "providerStates": [
+        {
+          "name": "RAG 'policies' exists and caller is admin"
+        }
+      ],
+      "request": {
+        "body": {
+          "confirmation": "policies",
+          "rag_slug": "policies"
+        },
+        "headers": {
+          "Authorization": "Bearer token",
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {},
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/admin/rag/delete"
+      },
+      "response": {
+        "body": {
+          "corr_id": "e2490de5-5bd3-43d5-b7c4-526e33f71304",
+          "deleted": true,
+          "rag_slug": "policies"
+        },
+        "generators": {
+          "body": {
+            "$.corr_id": {
+              "type": "Uuid"
+            }
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$.corr_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            }
+          },
+          "header": {},
+          "status": {}
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a file upload",
+      "providerStates": [
+        {
+          "name": "RAG 'policies' exists and caller is admin"
+        }
+      ],
+      "request": {
+        "body": "----------------------------PactBoundary\r\nContent-Disposition: form-data; name=\"rag_slug\"\r\n\r\npolicies\r\n----------------------------PactBoundary\r\nContent-Disposition: form-data; name=\"files\"; filename=\"handbook.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.7 placeholder%\r\n----------------------------PactBoundary--\r\n",
+        "headers": {
+          "Authorization": "Bearer token",
+          "Content-Type": "multipart/form-data; boundary=--------------------------PactBoundary"
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/rag/upload"
+      },
+      "response": {
+        "body": {
+          "accepted": [
+            "handbook.pdf"
+          ],
+          "corr_id": "e2490de5-5bd3-43d5-b7c4-526e33f71304",
+          "job_id": "e2490de5-5bd3-43d5-b7c4-526e33f71304",
+          "rag_slug": "policies",
+          "skipped": [
+            "duplicate.pdf"
+          ]
+        },
+        "generators": {
+          "body": {
+            "$.corr_id": {
+              "type": "Uuid"
+            },
+            "$.job_id": {
+              "type": "Uuid"
+            }
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$.accepted": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.corr_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.job_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.skipped": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            }
+          },
+          "header": {},
+          "status": {}
+        },
+        "status": 202
+      }
+    },
+    {
+      "description": "a chat request",
+      "providerStates": [
+        {
+          "name": "RAG 'policies' exists and user has access"
+        }
+      ],
+      "request": {
+        "body": {
+          "messages": [
+            {
+              "content": "What is parental leave?",
+              "role": "user"
+            }
+          ],
+          "opts": {
+            "max_tokens": 500,
+            "temperature": 0.2,
+            "top_k": 6
+          },
+          "rag_slug": "policies"
+        },
+        "headers": {
+          "Authorization": "Bearer token",
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {},
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/chat"
+      },
+      "response": {
+        "body": {
+          "answer": "Our parental leave policy...",
+          "citations": [
+            {
+              "doc_id": "e2490de5-5bd3-43d5-b7c4-526e33f71304",
+              "filename": "parental_policy.pdf",
+              "pages": [
+                4
+              ],
+              "snippet": "Eligible employees..."
+            }
+          ],
+          "corr_id": "e2490de5-5bd3-43d5-b7c4-526e33f71304",
+          "usage": {
+            "tokens_in": 100,
+            "tokens_out": 50
+          }
+        },
+        "generators": {
+          "body": {
+            "$.citations[*].doc_id": {
+              "type": "Uuid"
+            },
+            "$.corr_id": {
+              "type": "Uuid"
+            }
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.citations": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.citations[*].doc_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.citations[*].pages": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.citations[*].snippet": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.corr_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.usage.tokens_in": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.usage.tokens_out": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          },
+          "header": {},
+          "status": {}
+        },
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "12.5.2"
+    },
+    "pactRust": {
+      "ffi": "0.4.20",
+      "models": "1.2.0"
+    },
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  },
+  "provider": {
+    "name": "ChatFleet-API"
+  }
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="48" fill="white"/>
+  <g>
+    <path d="M30 6C41.598 6 51 14.402 51 25C51 30.145 48.88 34.807 45.361 38.252L47.5 46L38.421 41.97C35.891 42.92 33.023 43.5 30 43.5C18.402 43.5 9 35.098 9 24.5C9 13.902 18.402 6 30 6Z" fill="#1E6FF8"/>
+    <path d="M50 12C57.732 12 64 17.82 64 25C64 28.698 62.435 32.011 59.925 34.448L62 42L54.548 38.582C52.641 39.104 50.661 39.375 48.606 39.375C40.769 39.375 34.375 33.04 34.375 25.3125C34.375 17.585 40.769 12 48.606 12H50Z" fill="#4DA3FF"/>
+    <path d="M60 18C65.523 18 70 22.477 70 28C70 30.698 68.909 33.137 67.094 34.927L68.5 40.5L62.732 37.797C61.47 38.182 60.122 38.375 58.71 38.375C53.187 38.375 48.71 33.898 48.71 28.375C48.71 22.852 53.187 18 58.71 18H60Z" fill="#8CC8FF"/>
+    <circle cx="22" cy="21" r="2.2" fill="white"/>
+    <circle cx="30" cy="21" r="2.2" fill="white"/>
+    <circle cx="38" cy="21" r="2.2" fill="white"/>
+  </g>
+  <text x="85" y="30" font-family="Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="22" font-weight="600" fill="#0F172A">ChatFleet</text>
+</svg>
