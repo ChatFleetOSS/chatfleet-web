@@ -9,6 +9,7 @@ import type {
   RagCreateRequest,
   RagCreateResponse,
   AuthResponse,
+  RagDeleteResponse,
   ChatRequest,
   ChatResponse,
   JobAccepted,
@@ -30,6 +31,7 @@ import {
   JobAccepted as JobAcceptedSchema,
   JobStatusResponse as JobStatusSchema,
   RagDocsResponse as RagDocsSchema,
+  RagDeleteResponse as RagDeleteResponseSchema,
   RagListResponse as RagListSchema,
   RagUploadAccepted as RagUploadAcceptedSchema,
   RagCreateResponse as RagCreateResponseSchema,
@@ -184,11 +186,12 @@ export async function removeRagUser(token: string, body: RagUserUpsertRequest) {
 }
 
 export async function deleteRag(token: string, ragSlug: string, confirmation: string) {
-  return request<void>({
-    path: "/rag/delete",
+  return request<RagDeleteResponse>({
+    path: "/admin/rag/delete",
     method: "POST",
     token,
     body: { rag_slug: ragSlug, confirmation },
+    schema: RagDeleteResponseSchema,
   });
 }
 

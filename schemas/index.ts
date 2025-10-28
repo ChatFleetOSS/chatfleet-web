@@ -149,6 +149,13 @@ export const RagUploadAccepted = z.object({
 });
 export type RagUploadAccepted = z.infer<typeof RagUploadAccepted>;
 
+export const RagDeleteResponse = z.object({
+  deleted: z.boolean(),
+  rag_slug: RagSlug,
+  corr_id: UUID,
+});
+export type RagDeleteResponse = z.infer<typeof RagDeleteResponse>;
+
 export const IndexStatusEnum = z.enum(["idle", "building", "error"]);
 export const IndexStatusResponse = z.object({
   rag_slug: RagSlug,

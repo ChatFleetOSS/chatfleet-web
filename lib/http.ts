@@ -1,4 +1,4 @@
-import { API_BASE } from "@/lib/config";
+import { API_BASE, API_SERVER_BASE } from "@/lib/config";
 import { ApiError, AuthError } from "@/lib/errors";
 import type { ErrorEnvelope } from "@/schemas";
 import type { ZodSchema } from "zod";
@@ -26,13 +26,23 @@ function buildUrl(path: string) {
   const trimmed = path.startsWith("/")
     ? path
     : `/${path}`;
-  return `${API_BASE}${trimmed}`;
+  const base = typeof window === "undefined" ? API_SERVER_BASE : API_BASE;
+  return `${base}${trimmed}`;
 }
 
 async function parseError(res: Response): Promise<ErrorEnvelope | undefined> {
   try {
     const data = await res.clone().json();
-    return data?.error ? (data as ErrorEnvelope) : undefined;
+    if (data?.error && data?.corr_id) {
+      return data as ErrorEnvelope;
+    }
+    if (data?.detail?.error && data?.detail?.corr_id) {
+      return {
+        error: data.detail.error,
+        corr_id: data.detail.corr_id,
+      } satisfies ErrorEnvelope;
+    }
+    return undefined;
   } catch {
     return undefined;
   }

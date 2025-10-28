@@ -4,13 +4,15 @@ import { useAuth } from "@/components/providers/auth-provider";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { status, login, register } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState<string | null>(null);
 
@@ -20,15 +22,26 @@ export default function LoginPage() {
     }
   }, [router, status]);
 
+  useEffect(() => {
+    if (mode === "register" && !name && email.includes("@")) {
+      setName(email.split("@")[0]);
+    }
+  }, [email, mode, name]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
     try {
       if (mode === "login") {
         await login({ email, password });
       } else {
-        await register({ email, password, name: email.split("@")[0] });
+        await register({ email, password, name: name.trim() || email.split("@")[0] });
       }
       router.replace("/");
     } catch (err: unknown) {
@@ -41,6 +54,35 @@ export default function LoginPage() {
 
   const isLoading = status === "loading";
   const year = new Date().getFullYear();
+  const formLabels = useMemo(
+    () =>
+      mode === "login"
+        ? {
+            heading: "Welcome back",
+            subtitle: "Sign in to manage your RAG assistants.",
+            toggleCta: "Need an account?",
+            toggleTarget: "register" as const,
+            submitLabel: isLoading ? "Authenticating…" : "Sign in",
+          }
+        : {
+            heading: "Create an account",
+            subtitle: "Enter your details to start building assistants.",
+            toggleCta: "Already have an account?",
+            toggleTarget: "login" as const,
+            submitLabel: isLoading ? "Creating your workspace…" : "Register & sign in",
+          },
+    [isLoading, mode],
+  );
+
+  function toggleMode(nextMode: "login" | "register") {
+    setMode(nextMode);
+    setError(null);
+    setPassword("");
+    setConfirmPassword("");
+    if (nextMode === "login") {
+      setName("");
+    }
+  }
 
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
@@ -81,11 +123,25 @@ export default function LoginPage() {
       <section className="flex items-center justify-center bg-[#f9fafb] px-8 py-12">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-md">
           <div className="mb-6 space-y-1 text-center">
-            <h2 className="text-2xl font-semibold text-gray-900">Welcome back</h2>
-            <p className="text-sm text-gray-600">Sign in to manage your RAG assistants.</p>
+            <h2 className="text-2xl font-semibold text-gray-900">{formLabels.heading}</h2>
+            <p className="text-sm text-gray-600">{formLabels.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "register" ? (
+              <label className="block text-sm font-medium text-gray-800">
+                Name
+                <input
+                  type="text"
+                  required={mode === "register"}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="James Operator"
+                  className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  autoComplete="name"
+                />
+              </label>
+            ) : null}
             <label className="block text-sm font-medium text-gray-800">
               Email
               <input
@@ -95,6 +151,7 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@company.com"
                 className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoComplete="email"
               />
             </label>
             <label className="block text-sm font-medium text-gray-800">
@@ -106,8 +163,23 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
             </label>
+            {mode === "register" ? (
+              <label className="block text-sm font-medium text-gray-800">
+                Confirm password
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="••••••••"
+                  className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  autoComplete="new-password"
+                />
+              </label>
+            ) : null}
 
             {error ? (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -120,7 +192,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="h-11 w-full rounded-md bg-[#1E6FF8] text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-600 disabled:opacity-60"
             >
-              {isLoading ? "Authenticating…" : mode === "login" ? "Sign in" : "Register & sign in"}
+              {formLabels.submitLabel}
             </button>
           </form>
 
@@ -128,10 +200,10 @@ export default function LoginPage() {
             <span>Verified workspace • TLS secured</span>
             <button
               type="button"
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
+              onClick={() => toggleMode(formLabels.toggleTarget)}
               className="font-medium text-blue-600 hover:underline"
             >
-              {mode === "login" ? "Need an account?" : "Back to sign in"}
+              {formLabels.toggleCta}
             </button>
           </div>
 
