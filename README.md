@@ -17,7 +17,7 @@ Environment variables consumed by the frontend:
 | `NEXT_PUBLIC_API_BASE` | Backend base URL with `/api` prefix | `http://localhost:8000/api` |
 | `NEXT_PUBLIC_SSE_HEARTBEAT_MS` | Expected SSE heartbeat for `/chat/stream` | `15000` |
 
-Sign in via `/login`, seeded admin users receive the admin console (`/admin`). JWT tokens persist in `localStorage` (`chatfleet.auth.token`) and refresh on load via `/auth/me`.
+Sign in via `/login`. If the operator installed with `CREATE_ADMIN=1 ADMIN_EMAIL=you@example.com`, the first successful login with that email is upgraded to admin immediately and the admin console (`/admin`) is available right away. JWT tokens persist in `localStorage` (`chatfleet.auth.token`) and refresh on load via `/auth/me`.
 
 ## Development Workflow
 
