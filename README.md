@@ -5,16 +5,23 @@ Minimalist Next.js 15 interface for the ChatFleet multi-RAG platform. This UI al
 ## Quickstart
 
 ```bash
-cp .env.example .env.local # ensure NEXT_PUBLIC_API_BASE + heartbeat vars
 npm install
 npm run dev
 ```
 
-Environment variables consumed by the frontend:
+Notes for development:
+- No env is required for dev. The Next.js config rewrites browser calls from `/backend-api/*` → `http://localhost:8000/api/*`.
+- Server‑side (SSR) requests use `BACKEND_API_BASE` and default to `http://localhost:8000/api`.
+- If you do set envs, prefer:
+  - `NEXT_PUBLIC_API_BASE=/backend-api` (browser) — the default already.
+  - `BACKEND_API_BASE=http://localhost:8000/api` (SSR/server).
 
-| Key | Purpose | Default |
+Environment variables (optional):
+
+| Key | Purpose | Dev default |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE` | Backend base URL with `/api` prefix | `http://localhost:8000/api` |
+| `NEXT_PUBLIC_API_BASE` | Browser API base | `/backend-api` |
+| `BACKEND_API_BASE` | SSR/server API base | `http://localhost:8000/api` |
 | `NEXT_PUBLIC_SSE_HEARTBEAT_MS` | Expected SSE heartbeat for `/chat/stream` | `15000` |
 
 Sign in via `/login`. If the operator installed with `CREATE_ADMIN=1 ADMIN_EMAIL=you@example.com`, the first successful login with that email is upgraded to admin immediately and the admin console (`/admin`) is available right away. JWT tokens persist in `localStorage` (`chatfleet.auth.token`) and refresh on load via `/auth/me`.

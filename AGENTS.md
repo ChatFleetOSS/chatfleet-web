@@ -4,7 +4,9 @@ This Next.js (app router) frontend targets the ChatFleet API.
 
 ## Project Notes
 - Runtime: Next.js 14 standalone (Node 20). See `Dockerfile`.
-- API base: proxied via Caddy to `/api`; in CI/edge builds we set `NEXT_PUBLIC_API_BASE=/api`.
+- API base:
+  - Dev (port 3000): browser calls go to `/backend-api/*` and are rewritten to `http://localhost:8000/api/*` by `next.config.ts`. Do not set `NEXT_PUBLIC_API_BASE` in dev.
+  - Containers/behind Caddy: set `NEXT_PUBLIC_API_BASE=/api`.
 - Auth: login/register pages under `app/(auth)/`; the register toggle is enabled in `app/(auth)/login/page.tsx`.
 
 ## Dev Scripts
@@ -25,4 +27,3 @@ This Next.js (app router) frontend targets the ChatFleet API.
 ## CI/CD
 - GitHub Actions build/push: `.github/workflows/ci.yml`
   - Publishes `ghcr.io/chatfleetoss/chatfleet-web` on tags and an `:edge` image on main.
-

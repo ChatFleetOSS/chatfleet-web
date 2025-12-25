@@ -13,8 +13,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { streamChat } from "@/lib/chat/stream";
 import type { ChatRequest, Citation } from "@/schemas";
 import { useTranslation } from "@/hooks/use-translation";
-
-const API_BASE = process.env.NEXT_PUBLIC_RAG_API || "http://localhost:8000";
+import { API_BASE } from "@/lib/config";
 
 type AssistantProps = {
   ragSlug?: string;
@@ -31,7 +30,7 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
   useEffect(() => {
     if (!token || ragSlug) return;
 
-    fetch(`${API_BASE}/api/rag/list`, {
+    fetch(`${API_BASE}/rag/list`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
