@@ -300,6 +300,9 @@ export const LLMConfigView = z.object({
   embed_model: z.string(),
   temperature_default: z.number().default(0.2),
   top_k_default: z.number().int().default(6),
+  index_dir: z.string(),
+  upload_dir: z.string(),
+  max_upload_mb: z.number().int().default(50),
   has_api_key: z.boolean().default(false),
   verified_at: ISODate.nullable().optional(),
   runtime_enabled: z.boolean().default(true),
@@ -320,6 +323,9 @@ export const LLMConfigUpdateRequest = z.object({
   embed_model: z.string(),
   temperature_default: z.number().optional(),
   top_k_default: z.number().int().optional(),
+  index_dir: z.string().optional(),
+  upload_dir: z.string().optional(),
+  max_upload_mb: z.number().int().optional(),
 });
 export type LLMConfigUpdateRequest = z.infer<typeof LLMConfigUpdateRequest>;
 

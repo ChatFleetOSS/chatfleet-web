@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
+  turbopack: {
+    // Silence root inference warning during dev; this app is the root.
+    root: __dirname,
+  },
   async rewrites() {
     return [
       {
