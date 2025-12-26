@@ -13,6 +13,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { streamChat } from "@/lib/chat/stream";
 import type { ChatRequest, Citation } from "@/schemas";
 import { useTranslation } from "@/hooks/use-translation";
+import { useLanguage } from "@/components/providers/language-provider";
 import { API_BASE } from "@/lib/config";
 
 type AssistantProps = {
@@ -26,6 +27,7 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
     ragSlug ?? (ragSlug ? "" : rags[0] ?? ""),
   );
   const t = useTranslation();
+  const { locale } = useLanguage();
 
   useEffect(() => {
     if (!token || ragSlug) return;
@@ -91,14 +93,23 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
 
         const payload: ChatRequest = {
           rag_slug: selectedRag,
-          messages: messages.map((message) => ({
+          messages: [
+            {
+              role: "system",
+              content:
+                locale === "fr"
+                  ? "Répondez exclusivement en français."
+                  : "Respond exclusively in English.",
+            },
+            ...messages.map((message) => ({
             role: message.role,
             content: message.content
               .filter((piece) => piece.type === "text")
               .map((piece) => piece.text)
               .join(" ")
               .trim(),
-          })),
+            })),
+          ],
         };
 
         let accumulated = "";
