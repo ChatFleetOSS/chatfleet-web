@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { AdminSection } from "@/components/admin/admin-section";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -33,10 +34,12 @@ export default function AdminSettingsPage() {
   const [provider, setProvider] = useState<"openai" | "vllm">("openai");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const [chatModel, setChatModel] = useState("gpt-4o-mini");
   const [embedModel, setEmbedModel] = useState("text-embedding-3-small");
   const [savingError, setSavingError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [embedChanged, setEmbedChanged] = useState(false);
 
   useEffect(() => {
     const data = cfgQuery.data?.config;
@@ -45,6 +48,7 @@ export default function AdminSettingsPage() {
     setBaseUrl(data.base_url ?? "");
     setChatModel(data.chat_model ?? "gpt-4o-mini");
     setEmbedModel(data.embed_model ?? "text-embedding-3-small");
+    setEmbedChanged(false);
   }, [cfgQuery.data]);
 
   const testMutation = useMutation({
@@ -73,7 +77,7 @@ export default function AdminSettingsPage() {
       const res = await adminSaveLLMConfig(token, {
         provider,
         base_url: baseUrl || undefined,
-        api_key: apiKey || undefined,
+        api_key: showKeyInput ? apiKey || undefined : undefined,
         chat_model: chatModel,
         embed_model: embedModel,
       });
@@ -82,6 +86,7 @@ export default function AdminSettingsPage() {
     onSuccess: () => {
       setSavingError(null);
       setApiKey("");
+      setShowKeyInput(false);
       qc.invalidateQueries({ queryKey: ["admin-llm-config"] });
     },
     onError: (err) => {
@@ -105,7 +110,10 @@ export default function AdminSettingsPage() {
 
         <AdminSection title={t("adminSettings.providerTitle")} description={t("adminSettings.providerDesc")} defaultOpen>
           <div className="grid gap-4">
-            <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.provider")}</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.provider")}</label>
+              <StatusChip cfg={cfgQuery.data?.config} t={t} />
+            </div>
             <select value={provider} onChange={(e) => setProvider(e.target.value as any)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
               <option value="openai">OpenAI</option>
               <option value="vllm">vLLM (OpenAI-compatible)</option>
@@ -120,7 +128,14 @@ export default function AdminSettingsPage() {
 
             <div className="flex flex-col gap-2">
               <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.apiKey")}</label>
-              <Input type="password" placeholder={t("adminSettings.apiKeyPlaceholder")!} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              {showKeyInput ? (
+                <Input type="password" placeholder={t("adminSettings.apiKeyPlaceholder")!} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Input disabled value={cfgQuery.data?.config.has_api_key ? "•••• (set)" : t("adminSettings.status.notConfigured")!} />
+                  <Button variant="outline" size="sm" onClick={() => { setShowKeyInput(true); setApiKey(""); }}>{t("adminSettings.replaceKey")}</Button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">{t("adminSettings.apiKeyHelp")}</p>
             </div>
 
@@ -131,7 +146,7 @@ export default function AdminSettingsPage() {
               </label>
               <label className="flex flex-col gap-2">
                 <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("admin.runtime.embeddingModel")}</span>
-                <Input value={embedModel} onChange={(e) => setEmbedModel(e.target.value)} />
+                <Input value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
               </label>
             </div>
 
@@ -145,6 +160,12 @@ export default function AdminSettingsPage() {
             </div>
             {savingError ? <p className="text-xs text-destructive">{savingError}</p> : null}
             {testResult ? <p className="text-xs text-muted-foreground">{testResult}</p> : null}
+            {embedChanged ? (
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                <div className="mb-2 font-medium text-foreground">{t("adminSettings.rebuildNotice")}</div>
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push("/admin")}>{t("adminSettings.rebuildAll")}</Button>
+              </div>
+            ) : null}
           </div>
         </AdminSection>
       </div>
@@ -152,3 +173,19 @@ export default function AdminSettingsPage() {
   );
 }
 
+function StatusChip({ cfg, t }: { cfg: any; t: ReturnType<typeof useTranslation> }) {
+  const hasKey = !!cfg?.has_api_key;
+  const verified = !!cfg?.verified_at;
+  let label = t("adminSettings.status.notConfigured");
+  let cls = "bg-amber-200 text-amber-900";
+  if (hasKey && verified) {
+    label = t("adminSettings.status.connected");
+    cls = "bg-emerald-200 text-emerald-900";
+  } else if (hasKey && !verified) {
+    label = t("adminSettings.status.connected");
+    cls = "bg-sky-200 text-sky-900";
+  }
+  return (
+    <span className={cn("rounded px-2 py-[2px] text-xs", cls)}>{label}</span>
+  );
+}
