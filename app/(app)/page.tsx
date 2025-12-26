@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listRags } from "@/lib/apiClient";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { ArrowRightIcon, ShieldIcon } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -66,15 +67,16 @@ export default function DashboardPage() {
             })}
           </h2>
           {user?.role === "admin" ? (
-            <Button
+            <NavButton
               variant="outline"
               size="sm"
-              onClick={() => router.push("/admin")}
+              href="/admin"
+              pendingLabel={t("common.opening")}
               className="flex items-center gap-2"
             >
               <ShieldIcon aria-hidden="true" className="size-4" />
               <span>{t("dashboard.openAdminConsole")}</span>
-            </Button>
+            </NavButton>
           ) : null}
         </header>
 
@@ -99,15 +101,16 @@ export default function DashboardPage() {
                       {rag.description}
                     </p>
                   </div>
-                  <Button
+                  <NavButton
                     variant="outline"
                     size="sm"
-                    onClick={() => router.push(`/rag/${rag.slug}`)}
+                    href={`/rag/${rag.slug}`}
+                    pendingLabel={t("common.opening")}
                     className="flex items-center gap-2 bg-muted text-foreground hover:bg-muted/80"
                   >
                     <span>{t("dashboard.select")}</span>
                     <ArrowRightIcon aria-hidden="true" className="size-4" />
-                  </Button>
+                  </NavButton>
                 </div>
               </li>
             ))}
