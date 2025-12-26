@@ -344,3 +344,18 @@ export const LLMConfigTestResult = z.object({
   corr_id: UUID,
 });
 export type LLMConfigTestResult = z.infer<typeof LLMConfigTestResult>;
+
+export const LLMModelsRequest = z.object({
+  provider: LLMProvider,
+  base_url: z.string().optional().nullable(),
+  api_key: z.string().optional().nullable(),
+});
+export type LLMModelsRequest = z.infer<typeof LLMModelsRequest>;
+
+export const LLMModelsResponse = z.object({
+  chat_models: z.array(z.string()),
+  embed_models: z.array(z.string()),
+  raw_models: z.array(z.string()),
+  corr_id: UUID,
+});
+export type LLMModelsResponse = z.infer<typeof LLMModelsResponse>;

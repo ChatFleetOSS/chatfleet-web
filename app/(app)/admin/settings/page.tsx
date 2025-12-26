@@ -15,6 +15,7 @@ import {
   adminGetLLMConfig,
   adminSaveLLMConfig,
   adminTestLLMConfig,
+  adminDiscoverLLMModels,
 } from "@/lib/apiClient";
 
 export default function AdminSettingsPage() {
@@ -47,6 +48,10 @@ export default function AdminSettingsPage() {
   const [savingError, setSavingError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [embedChanged, setEmbedChanged] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+  const [chatOptions, setChatOptions] = useState<string[]>([]);
+  const [embedOptions, setEmbedOptions] = useState<string[]>([]);
 
   useEffect(() => {
     const data = cfgQuery.data?.config;
@@ -64,26 +69,35 @@ export default function AdminSettingsPage() {
   }, [cfgQuery.data]);
 
   const testMutation = useMutation({
+    retry: false,
     mutationFn: async () => {
       if (!token) throw new Error("Missing token");
-      const res = await adminTestLLMConfig(token, {
-        provider,
-        base_url: baseUrl || undefined,
-        api_key: apiKey || undefined,
-        chat_model: chatModel,
-        embed_model: embedModel,
-      });
-      return res;
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 15000);
+      try {
+        const res = await adminTestLLMConfig(token, {
+          provider,
+          base_url: baseUrl || undefined,
+          api_key: apiKey || undefined,
+          chat_model: chatModel,
+          embed_model: embedModel,
+        }, { signal: ac.signal });
+        return res;
+      } finally {
+        clearTimeout(timer);
+      }
     },
     onSuccess: (res) => {
       setTestResult(res.ok ? t("adminSettings.test.ok") : res.message || t("adminSettings.test.fail"));
     },
     onError: (err) => {
-      setTestResult((err as Error).message);
+      const msg = (err as Error).name === 'AbortError' ? 'TIMEOUT: provider did not respond' : (err as Error).message;
+      setTestResult(msg);
     },
   });
 
   const saveMutation = useMutation({
+    retry: false,
     mutationFn: async () => {
       if (!token) throw new Error("Missing token");
       const res = await adminSaveLLMConfig(token, {
@@ -173,16 +187,62 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-muted-foreground">{t("adminSettings.apiKeyHelp")}</p>
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Models</span>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled={discovering} onClick={async () => {
+                      if (!token) return;
+                      setDiscoverError(null);
+                      setDiscovering(true);
+                      const ac = new AbortController();
+                      const timer = setTimeout(() => ac.abort(), 15000);
+                      try {
+                        const res = await adminDiscoverLLMModels(token, {
+                          provider,
+                          base_url: baseUrl || undefined,
+                          api_key: apiKey || undefined,
+                        }, { signal: ac.signal });
+                        setChatOptions(res.chat_models || []);
+                        setEmbedOptions(res.embed_models || []);
+                        if (res.chat_models?.length) setChatModel((prev) => prev || res.chat_models[0]);
+                        if (res.embed_models?.length) setEmbedModel((prev) => prev || res.embed_models[0]);
+                      } catch (e: any) {
+                        setDiscoverError(e?.name === 'AbortError' ? 'Discovery timed out' : (e?.message || 'Discovery failed'));
+                      } finally {
+                        clearTimeout(timer);
+                        setDiscovering(false);
+                      }
+                    }}>{discovering ? t("common.loading") : t("adminSettings.refreshModels")}</Button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("admin.runtime.chatModel")}</span>
-                    <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)} />
+                    {chatOptions.length > 0 ? (
+                      <select value={chatModel} onChange={(e) => setChatModel(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
+                        {chatOptions.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)} />
+                    )}
                   </label>
                   <label className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("admin.runtime.embeddingModel")}</span>
-                    <Input value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
+                    {embedOptions.length > 0 ? (
+                      <select value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
+                        {embedOptions.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
+                    )}
                   </label>
                 </div>
+                {discoverError ? <p className="text-xs text-destructive">{discoverError}</p> : null}
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-2">

@@ -42,6 +42,8 @@ import {
   LLMConfigUpdateRequest as LLMConfigUpdateRequestSchema,
   LLMConfigTestRequest as LLMConfigTestRequestSchema,
   LLMConfigTestResult as LLMConfigTestResultSchema,
+  LLMModelsRequest as LLMModelsRequestSchema,
+  LLMModelsResponse as LLMModelsResponseSchema,
 } from "@/schemas";
 
 export async function register(body: RegisterRequest) {
@@ -254,13 +256,14 @@ export async function adminGetLLMConfig(token: string) {
   });
 }
 
-export async function adminTestLLMConfig(token: string, body: import("@/schemas").LLMConfigTestRequest) {
+export async function adminTestLLMConfig(token: string, body: import("@/schemas").LLMConfigTestRequest, opts?: { signal?: AbortSignal }) {
   return request<import("@/schemas").LLMConfigTestResult>({
     path: "/admin/llm/config/test",
     method: "POST",
     token,
     body,
     schema: LLMConfigTestResultSchema,
+    signal: opts?.signal,
   });
 }
 
@@ -271,5 +274,20 @@ export async function adminSaveLLMConfig(token: string, body: import("@/schemas"
     token,
     body,
     schema: LLMConfigResponseSchema,
+  });
+}
+
+export async function adminDiscoverLLMModels(
+  token: string,
+  body: import("@/schemas").LLMModelsRequest,
+  opts?: { signal?: AbortSignal },
+) {
+  return request<import("@/schemas").LLMModelsResponse>({
+    path: "/admin/llm/config/models",
+    method: "POST",
+    token,
+    body,
+    schema: LLMModelsResponseSchema,
+    signal: opts?.signal,
   });
 }
