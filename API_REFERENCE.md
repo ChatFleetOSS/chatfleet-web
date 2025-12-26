@@ -209,6 +209,12 @@ This guide enumerates every `/api` endpoint exposed by the ChatFleet backend and
   }
   ```
 
+### LLM Runtime Config (Admin)
+- `GET /api/admin/llm/config` → returns masked runtime LLM settings and flags.
+- `POST /api/admin/llm/config/test` → probes the provided provider/key/base URL; returns `{ ok, message }`.
+- `PUT /api/admin/llm/config` → saves provider, base URL, API key (masked), chat/embedding models; re‑verifies and returns current view.
+
+
 ## Frontend Workflows
 1. **User onboarding:** Call `/api/auth/register` or have an admin create the user, then assign RAG access via `/api/rag/users/add`.
 2. **Creating a RAG:** Call `POST /api/rag`, assign users, upload PDFs with `/api/rag/upload`, watch the job via `/api/jobs/{job_id}`, and display `GET /api/rag/index/status` for progress.

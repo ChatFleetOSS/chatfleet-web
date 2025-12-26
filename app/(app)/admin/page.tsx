@@ -160,6 +160,9 @@ export default function AdminDashboardPage() {
         <AdminSection
           title={t("admin.runtime.title")}
           description={t("admin.runtime.description")}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => router.push("/admin/settings")}>{t("admin.settings")}</Button>
+          }
         >
           {configQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">

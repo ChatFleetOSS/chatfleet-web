@@ -289,3 +289,52 @@ export const AdminConfigResponse = z.object({
   corr_id: UUID,
 });
 export type AdminConfigResponse = z.infer<typeof AdminConfigResponse>;
+
+/** ------------------ admin llm config ------------------ */
+export const LLMProvider = z.enum(["openai", "vllm"]);
+
+export const LLMConfigView = z.object({
+  provider: LLMProvider,
+  base_url: z.string().nullable().optional(),
+  chat_model: z.string(),
+  embed_model: z.string(),
+  temperature_default: z.number().default(0.2),
+  top_k_default: z.number().int().default(6),
+  has_api_key: z.boolean().default(false),
+  verified_at: ISODate.nullable().optional(),
+  runtime_enabled: z.boolean().default(true),
+});
+export type LLMConfigView = z.infer<typeof LLMConfigView>;
+
+export const LLMConfigResponse = z.object({
+  config: LLMConfigView,
+  corr_id: UUID,
+});
+export type LLMConfigResponse = z.infer<typeof LLMConfigResponse>;
+
+export const LLMConfigUpdateRequest = z.object({
+  provider: LLMProvider,
+  base_url: z.string().optional().nullable(),
+  api_key: z.string().optional().nullable(),
+  chat_model: z.string(),
+  embed_model: z.string(),
+  temperature_default: z.number().optional(),
+  top_k_default: z.number().int().optional(),
+});
+export type LLMConfigUpdateRequest = z.infer<typeof LLMConfigUpdateRequest>;
+
+export const LLMConfigTestRequest = z.object({
+  provider: LLMProvider,
+  base_url: z.string().optional().nullable(),
+  api_key: z.string().optional().nullable(),
+  chat_model: z.string().optional(),
+  embed_model: z.string().optional(),
+});
+export type LLMConfigTestRequest = z.infer<typeof LLMConfigTestRequest>;
+
+export const LLMConfigTestResult = z.object({
+  ok: z.boolean(),
+  message: z.string().nullable().optional(),
+  corr_id: UUID,
+});
+export type LLMConfigTestResult = z.infer<typeof LLMConfigTestResult>;

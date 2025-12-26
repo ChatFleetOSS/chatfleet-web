@@ -38,6 +38,10 @@ import {
   RagUserUpsertResponse as RagUserUpsertResponseSchema,
   UsersListResponse as UsersListSchema,
   RagUsersResponse as RagUsersSchema,
+  LLMConfigResponse as LLMConfigResponseSchema,
+  LLMConfigUpdateRequest as LLMConfigUpdateRequestSchema,
+  LLMConfigTestRequest as LLMConfigTestRequestSchema,
+  LLMConfigTestResult as LLMConfigTestResultSchema,
 } from "@/schemas";
 
 export async function register(body: RegisterRequest) {
@@ -237,5 +241,35 @@ export async function createRag(token: string, body: RagCreateRequest) {
     token,
     body,
     schema: RagCreateResponseSchema,
+  });
+}
+
+// ---- Admin LLM runtime config ----
+export async function adminGetLLMConfig(token: string) {
+  return request<{ config: import("@/schemas").LLMConfigView; corr_id: string}>({
+    path: "/admin/llm/config",
+    method: "GET",
+    token,
+    schema: LLMConfigResponseSchema,
+  });
+}
+
+export async function adminTestLLMConfig(token: string, body: import("@/schemas").LLMConfigTestRequest) {
+  return request<import("@/schemas").LLMConfigTestResult>({
+    path: "/admin/llm/config/test",
+    method: "POST",
+    token,
+    body,
+    schema: LLMConfigTestResultSchema,
+  });
+}
+
+export async function adminSaveLLMConfig(token: string, body: import("@/schemas").LLMConfigUpdateRequest) {
+  return request<import("@/schemas").LLMConfigResponse>({
+    path: "/admin/llm/config",
+    method: "PUT",
+    token,
+    body,
+    schema: LLMConfigResponseSchema,
   });
 }
