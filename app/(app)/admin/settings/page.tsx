@@ -16,6 +16,7 @@ import {
   adminSaveLLMConfig,
   adminTestLLMConfig,
   adminDiscoverLLMModels,
+  adminTestEmbeddingConfig,
 } from "@/lib/apiClient";
 
 export default function AdminSettingsPage() {
@@ -52,6 +53,7 @@ export default function AdminSettingsPage() {
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [chatOptions, setChatOptions] = useState<string[]>([]);
   const [embedOptions, setEmbedOptions] = useState<string[]>([]);
+  const [embedTestResult, setEmbedTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     const data = cfgQuery.data?.config;
@@ -277,12 +279,42 @@ export default function AdminSettingsPage() {
                   <PendingButton type="button" variant="outline" onClick={() => testMutation.mutate()} isPending={testMutation.isPending} pendingLabel={t("adminSettings.testing")}>
                     {t("adminSettings.testButton")}
                   </PendingButton>
+                  <PendingButton
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!token) return;
+                      setEmbedTestResult(null);
+                      const ac = new AbortController();
+                      const timer = setTimeout(() => ac.abort(), 15000);
+                      (async () => {
+                        try {
+                          const res = await adminTestEmbeddingConfig(token, {
+                            provider,
+                            base_url: baseUrl || undefined,
+                            api_key: apiKey || undefined,
+                            embed_model: embedModel,
+                          }, { signal: ac.signal });
+                          setEmbedTestResult(res.ok ? `${t("adminSettings.test.ok")} (${t("adminSettings.embeddingDim")}: ${res.dim ?? "?"})` : res.message || t("adminSettings.test.fail"));
+                        } catch (e: any) {
+                          setEmbedTestResult(e?.name === 'AbortError' ? 'TIMEOUT: provider did not respond' : (e?.message || 'Test failed'));
+                        } finally {
+                          clearTimeout(timer);
+                        }
+                      })();
+                    }}
+                    isPending={false}
+                    pendingLabel={t("adminSettings.testingEmbeddings")}
+                  >
+                    {t("adminSettings.testEmbeddings")}
+                  </PendingButton>
                   <PendingButton type="button" onClick={() => saveMutation.mutate()} isPending={saveMutation.isPending} pendingLabel={t("common.saving")}>
                     {t("common.save")}
                   </PendingButton>
                 </div>
                 {savingError ? <p className="text-xs text-destructive">{savingError}</p> : null}
                 {testResult ? <p className="text-xs text-muted-foreground">{testResult}</p> : null}
+                {embedTestResult ? <p className="text-xs text-muted-foreground">{embedTestResult}</p> : null}
                 {embedChanged ? (
                   <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                     <div className="mb-2 font-medium text-foreground">{t("adminSettings.rebuildNotice")}</div>

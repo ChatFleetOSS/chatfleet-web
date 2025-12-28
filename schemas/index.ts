@@ -359,3 +359,11 @@ export const LLMModelsResponse = z.object({
   corr_id: UUID,
 });
 export type LLMModelsResponse = z.infer<typeof LLMModelsResponse>;
+
+export const LLMEmbedTestResult = z.object({
+  ok: z.boolean(),
+  dim: z.number().int().nullable().optional(),
+  message: z.string().nullable().optional(),
+  corr_id: UUID,
+});
+export type LLMEmbedTestResult = z.infer<typeof LLMEmbedTestResult>;

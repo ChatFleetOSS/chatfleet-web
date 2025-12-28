@@ -44,6 +44,7 @@ import {
   LLMConfigTestResult as LLMConfigTestResultSchema,
   LLMModelsRequest as LLMModelsRequestSchema,
   LLMModelsResponse as LLMModelsResponseSchema,
+  LLMEmbedTestResult as LLMEmbedTestResultSchema,
 } from "@/schemas";
 
 export async function register(body: RegisterRequest) {
@@ -288,6 +289,21 @@ export async function adminDiscoverLLMModels(
     token,
     body,
     schema: LLMModelsResponseSchema,
+    signal: opts?.signal,
+  });
+}
+
+export async function adminTestEmbeddingConfig(
+  token: string,
+  body: import("@/schemas").LLMConfigTestRequest,
+  opts?: { signal?: AbortSignal },
+) {
+  return request<import("@/schemas").LLMEmbedTestResult>({
+    path: "/admin/llm/config/test-embed",
+    method: "POST",
+    token,
+    body,
+    schema: LLMEmbedTestResultSchema,
     signal: opts?.signal,
   });
 }
