@@ -34,7 +34,7 @@ import {
   uploadRagDocs,
   deleteRag,
 } from "@/lib/apiClient";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -42,6 +42,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function AdminRagDetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const slug = useMemo(
     () => (Array.isArray(params.slug) ? params.slug[0] : params.slug),
@@ -76,6 +77,7 @@ export default function AdminRagDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
+  const [deleteInFlight, setDeleteInFlight] = useState(false);
 
   useEffect(() => {
     setDeleteConfirm("");
@@ -89,7 +91,7 @@ export default function AdminRagDetailPage() {
       if (!token) throw new Error("Missing token");
       return getRagDocs(token, slug);
     },
-    enabled: Boolean(token) && user?.role === "admin" && canManage,
+    enabled: Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
     refetchInterval: 10_000,
   });
 
@@ -99,7 +101,7 @@ export default function AdminRagDetailPage() {
       if (!token) throw new Error("Missing token");
       return listRagUsers(token, slug);
     },
-    enabled: Boolean(token) && user?.role === "admin" && canManage,
+    enabled: Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
   });
 
   const uploadMutation = useMutation({
@@ -176,15 +178,25 @@ export default function AdminRagDetailPage() {
         throw new Error(t("adminRag.errors.metadataUnavailable"));
       }
       if (!token) throw new Error("Missing token");
+      setDeleteInFlight(true);
       await deleteRag(token, slug, deleteConfirm);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-rags"] }),
+        queryClient.invalidateQueries({ queryKey: ["rag-docs", slug, "admin"] }),
+        queryClient.invalidateQueries({ queryKey: ["rag-users", slug] }),
+      ]);
       setDeleteConfirm("");
       setDeleteError(null);
       setDeleteSuccessOpen(true);
     },
     onError: (err) => {
       setDeleteError((err as Error).message);
+      setDeleteInFlight(false);
+    },
+    onSettled: () => {
+      setDeleteInFlight(false);
     },
   });
 
@@ -300,7 +312,7 @@ export default function AdminRagDetailPage() {
             <p>{t("adminRag.docs.instructions")}</p>
             <Input
               type="file"
-              accept="application/pdf"
+              accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
               multiple
               onChange={(event) => setSelectedFiles(event.target.files)}
             />
@@ -547,12 +559,16 @@ export default function AdminRagDetailPage() {
               variant="destructive"
               onClick={() => deleteMutation.mutate()}
               disabled={
-                deleteConfirm !== confirmationTarget || deleteMutation.isPending
+                deleteConfirm !== confirmationTarget ||
+                deleteMutation.isPending ||
+                deleteInFlight
               }
               className="w-full sm:w-auto"
             >
-              {deleteMutation.isPending
-                ? t("adminRag.delete.buttonPending")
+              {deleteMutation.isPending || deleteInFlight
+                ? t("adminRag.delete.buttonPending", {
+                    defaultValue: "Deleting RAG in progress…",
+                  })
                 : t("adminRag.delete.button")}
             </Button>
           </div>

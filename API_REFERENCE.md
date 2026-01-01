@@ -210,9 +210,9 @@ This guide enumerates every `/api` endpoint exposed by the ChatFleet backend and
   ```
 
 ### LLM Runtime Config (Admin)
-- `GET /api/admin/llm/config` → returns masked runtime LLM settings and flags.
+- `GET /api/admin/llm/config` → returns masked runtime LLM settings and flags, including `embed_provider`.
 - `POST /api/admin/llm/config/test` → probes the provided provider/key/base URL; returns `{ ok, message }`.
-- `PUT /api/admin/llm/config` → saves provider, base URL, API key (masked), chat/embedding models; re‑verifies and returns current view.
+- `PUT /api/admin/llm/config` → saves provider, base URL, API key (masked), chat/embedding models + `embed_provider`; re‑verifies and returns current view. Use `embed_provider=local` to run embeddings via sentence-transformers.
 
 
 ## Frontend Workflows

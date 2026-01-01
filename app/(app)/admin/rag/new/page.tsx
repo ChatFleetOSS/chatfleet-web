@@ -16,7 +16,7 @@ import { createRag, uploadRagDocs } from "@/lib/apiClient";
 import { ApiError } from "@/lib/errors";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ArrowLeftIcon, PlusIcon } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -41,6 +41,16 @@ export default function AdminRagCreatePage() {
   const [description, setDescription] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<"idle" | "queued" | "running" | "done" | "error">("idle");
+  const [jobProgress, setJobProgress] = useState<number | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
+  const [jobTotals, setJobTotals] = useState<{
+    docs_total: number;
+    docs_done: number;
+    chunks_total: number;
+    chunks_done: number;
+  } | null>(null);
+  const [jobPhase, setJobPhase] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
@@ -56,6 +66,11 @@ export default function AdminRagCreatePage() {
       files: File[];
     }) => {
       if (!token) throw new Error("Missing token");
+      setJobStatus("queued");
+      setJobError(null);
+      setJobProgress(null);
+      setJobTotals(null);
+      setJobPhase(null);
       const createResponse = await createRag(token, {
         slug: payload.slug,
         name: payload.name,
@@ -69,6 +84,9 @@ export default function AdminRagCreatePage() {
           payload.files,
         );
         setJobId(uploadResponse.job_id);
+        setJobStatus("queued");
+      } else {
+        setJobStatus("done");
       }
 
       return createResponse.rag;
@@ -82,11 +100,10 @@ export default function AdminRagCreatePage() {
       queryClient.invalidateQueries({ queryKey: ["admin-rags"] });
     },
     onError: (err) => {
-      if (err instanceof ApiError) {
-        setError(err.message);
-        return;
-      }
-      setError((err as Error).message);
+      setJobStatus("error");
+      const msg = err instanceof ApiError ? err.message : (err as Error).message;
+      setJobError(msg);
+      setError(msg);
     },
   });
 
@@ -96,6 +113,47 @@ export default function AdminRagCreatePage() {
 
   const pendingRagName = createdName ?? name.trim();
   const pendingRagSlug = createdSlug ?? slug;
+  const showProcessing = dialogOpen && jobStatus !== "error" && jobStatus !== "done";
+  const showSuccess = dialogOpen && jobStatus === "done";
+  const showError = dialogOpen && jobStatus === "error";
+
+  useEffect(() => {
+    if (!jobId || jobStatus === "done" || jobStatus === "error") {
+      return;
+    }
+    const id = setInterval(async () => {
+      try {
+        if (!token || !jobId) return;
+        const res = await fetch(`/backend-api/jobs/${jobId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const status = json.status as typeof jobStatus;
+        const progress = typeof json.progress === "number" ? json.progress : null;
+        const totals =
+          json.totals && typeof json.totals === "object"
+            ? {
+                docs_total: Number(json.totals.docs_total ?? 0),
+                docs_done: Number(json.totals.docs_done ?? 0),
+                chunks_total: Number(json.totals.chunks_total ?? 0),
+                chunks_done: Number(json.totals.chunks_done ?? 0),
+              }
+            : null;
+        const phase = typeof json.phase === "string" ? json.phase : null;
+        setJobStatus(status);
+        setJobProgress(progress);
+        setJobTotals(totals);
+        setJobPhase(phase);
+        if (status === "done" || status === "error") {
+          setJobError(json.error || null);
+        }
+      } catch {
+        // Ignore transient polling errors
+      }
+    }, 2500);
+    return () => clearInterval(id);
+  }, [jobId, jobStatus, token]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,6 +178,11 @@ export default function AdminRagCreatePage() {
     setCreatedSlug(null);
     setCreatedName(null);
     setJobId(null);
+    setJobStatus("idle");
+    setJobProgress(null);
+    setJobError(null);
+    setJobTotals(null);
+    setJobPhase(null);
     createMutation.mutate({
       slug,
       name: trimmedName,
@@ -203,7 +266,7 @@ export default function AdminRagCreatePage() {
               <div className="space-y-3 text-sm text-muted-foreground">
                 <Input
                   type="file"
-                  accept="application/pdf"
+                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                   multiple
                   onChange={(event) => setSelectedFiles(event.target.files)}
                   disabled={createMutation.isPending || dialogOpen}
@@ -232,28 +295,34 @@ export default function AdminRagCreatePage() {
                 <ArrowLeftIcon aria-hidden="true" className="size-4" />
                 <span>{t("common.cancel")}</span>
               </Button>
-              <Button
-                type="submit"
-                disabled={createMutation.isPending || dialogOpen}
-                className="flex items-center gap-2"
-              >
-                <PlusIcon aria-hidden="true" className="size-4" />
-                <span>
-                  {createMutation.isPending
-                    ? t("adminCreate.creating")
-                    : t("common.createRag")}
-                </span>
-              </Button>
-            </div>
-          </form>
-        </div>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending || dialogOpen}
+              className="flex items-center gap-2"
+            >
+              <PlusIcon aria-hidden="true" className="size-4" />
+              <span>
+                {createMutation.isPending
+                  ? t("adminCreate.creating")
+                  : t("common.createRag")}
+              </span>
+            </Button>
+          </div>
+        </form>
       </div>
+    </div>
 
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
           if (!open) {
             setDialogOpen(false);
+            setJobId(null);
+            setJobStatus("idle");
+            setJobProgress(null);
+            setJobError(null);
+            setJobTotals(null);
+            setJobPhase(null);
             if (createdSlug) {
               router.replace(`/admin/rag/${createdSlug}`);
             } else {
@@ -265,33 +334,89 @@ export default function AdminRagCreatePage() {
         <DialogContent className="w-full max-w-lg">
           <DialogHeader className="space-y-4 text-center">
             <DialogTitle className="text-3xl font-semibold">
-              {t("adminCreate.successProcessingTitle")}
+              {showSuccess
+                ? t("adminCreate.successTitle")
+                : showError
+                ? t("adminCreate.errorTitle")
+                : t("adminCreate.processingTitle")}
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground">
-              {t("adminCreate.successProcessingBody", {
-                name: pendingRagName || pendingRagSlug,
-                slug: pendingRagSlug,
-              })}
+              {showSuccess
+                ? t("adminCreate.successBody", {
+                    name: pendingRagName || pendingRagSlug,
+                    slug: pendingRagSlug,
+                  })
+                : showError
+                ? jobError || t("adminCreate.errorBody")
+                : t("adminCreate.processingBody", {
+                    name: pendingRagName || pendingRagSlug,
+                    slug: pendingRagSlug,
+                  })}
             </DialogDescription>
-            <p className="text-sm text-muted-foreground">
-              {t("adminCreate.successProcessingSubtitle")}
-            </p>
+            {showProcessing ? (
+              <p className="text-sm text-muted-foreground">
+                {jobProgress !== null
+                  ? t("adminCreate.processingProgress", {
+                      progress: Math.round(jobProgress * 100),
+                    })
+                  : t("adminCreate.processingSubtitle")}
+              </p>
+            ) : null}
+            {showProcessing && jobTotals ? (
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>
+                  {t("adminCreate.processingDocs", {
+                    done: jobTotals.docs_done,
+                    total: jobTotals.docs_total,
+                  })}
+                </p>
+                {jobTotals.chunks_total > 0 ? (
+                  <p>
+                    {t("adminCreate.processingChunks", {
+                      done: jobTotals.chunks_done,
+                      total: jobTotals.chunks_total,
+                    })}
+                  </p>
+                ) : null}
+                {jobPhase ? (
+                  <p>
+                    {t("adminCreate.processingPhase", {
+                      phase: jobPhase,
+                    })}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-3">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                setDialogOpen(false);
-                if (createdSlug) {
-                  router.replace(`/admin/rag/${createdSlug}`);
-                } else {
-                  router.replace("/admin");
-                }
-              }}
-            >
-              {t("adminCreate.viewProgress")}
-            </Button>
+            {showProcessing ? (
+              <Button type="button" className="w-full" disabled>
+                {t("adminCreate.processingCta")}
+              </Button>
+            ) : showError ? (
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => setDialogOpen(false)}
+              >
+                {t("adminCreate.errorCta")}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  setDialogOpen(false);
+                  if (createdSlug) {
+                    router.replace(`/admin/rag/${createdSlug}`);
+                  } else {
+                    router.replace("/admin");
+                  }
+                }}
+              >
+                {t("adminCreate.successCta")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

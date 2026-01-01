@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useId } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useQuery } from "@tanstack/react-query";
-import { adminConfig, adminListUsers, listAdminRags } from "@/lib/apiClient";
+import { adminConfig, adminGetLLMConfig, adminListUsers, listAdminRags } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -48,17 +48,31 @@ export default function AdminDashboardPage() {
     enabled: isAdmin && Boolean(token),
   });
 
+  const llmConfigQuery = useQuery({
+    queryKey: ["admin-llm-config"],
+    queryFn: () => {
+      if (!token) throw new Error("Missing token");
+      return adminGetLLMConfig(token);
+    },
+    enabled: isAdmin && Boolean(token),
+  });
+
   const configItems = useMemo(() => {
     const data = configQuery.data;
     if (!data) return [] as Array<{ label: string; value: string; monospace?: boolean }>;
+    const llmCfg = llmConfigQuery.data?.config;
+    const providerConfigured = llmCfg
+      ? (llmCfg.provider === "openai" ? llmCfg.has_api_key : Boolean(llmCfg.base_url))
+      : false;
+    const modelFallback = t("adminSettings.status.notConfigured");
     return [
       {
         label: t("admin.runtime.chatModel"),
-        value: data.chat_model ?? "—",
+        value: providerConfigured ? (data.chat_model ?? "—") : modelFallback,
       },
       {
         label: t("admin.runtime.embeddingModel"),
-        value: data.embed_model ?? "—",
+        value: providerConfigured ? (data.embed_model ?? "—") : modelFallback,
       },
       {
         label: t("admin.runtime.indexDir"),

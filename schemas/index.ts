@@ -122,7 +122,12 @@ export const RagDoc = z.object({
   doc_id: UUID,
   filename: z.string(),
   path: z.string().nullable().optional(),
-  mime: z.enum(["application/pdf"]),
+  mime: z.enum([
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "application/msword",
+  ]),
   size_bytes: z.number().int().min(0),
   sha256: z.string().nullable().optional(),
   status: DocStatusEnum,
@@ -258,8 +263,16 @@ export const ChatResponse = z.object({
 export type ChatResponse = z.infer<typeof ChatResponse>;
 
 /** ------------------ jobs / admin ------------------ */
-export const JobType = z.enum(["RAG_INDEX", "RAG_REBUILD", "RAG_RESET"]);
+export const JobType = z.enum(["RAG_INDEX", "RAG_REBUILD", "RAG_RESET", "CHAT_COMPLETION"]);
 export const JobState = z.enum(["queued", "running", "done", "error"]);
+export const JobPhase = z.enum(["queued", "chunking", "embedding", "indexing", "finalizing"]);
+
+export const JobTotals = z.object({
+  docs_total: z.number().int().min(0),
+  docs_done: z.number().int().min(0),
+  chunks_total: z.number().int().min(0),
+  chunks_done: z.number().int().min(0),
+});
 
 export const JobAccepted = z.object({
   job_id: UUID,
@@ -275,6 +288,8 @@ export const JobStatusResponse = z.object({
   started_at: ISODate.nullable().optional(),
   finished_at: ISODate.nullable().optional(),
   result: z.record(z.any()).nullable().optional(),
+  phase: JobPhase.nullable().optional(),
+  totals: JobTotals.nullable().optional(),
   error: z.string().nullable().optional(),
   corr_id: UUID,
 });
@@ -292,12 +307,14 @@ export type AdminConfigResponse = z.infer<typeof AdminConfigResponse>;
 
 /** ------------------ admin llm config ------------------ */
 export const LLMProvider = z.enum(["openai", "vllm"]);
+export const EmbedProvider = z.enum(["openai", "local"]);
 
 export const LLMConfigView = z.object({
   provider: LLMProvider,
   base_url: z.string().nullable().optional(),
   chat_model: z.string(),
   embed_model: z.string(),
+  embed_provider: EmbedProvider.default("openai"),
   temperature_default: z.number().default(0.2),
   top_k_default: z.number().int().default(6),
   index_dir: z.string(),
@@ -321,6 +338,7 @@ export const LLMConfigUpdateRequest = z.object({
   api_key: z.string().optional().nullable(),
   chat_model: z.string(),
   embed_model: z.string(),
+  embed_provider: EmbedProvider.default("openai"),
   temperature_default: z.number().optional(),
   top_k_default: z.number().int().optional(),
   index_dir: z.string().optional(),
@@ -335,6 +353,7 @@ export const LLMConfigTestRequest = z.object({
   api_key: z.string().optional().nullable(),
   chat_model: z.string().optional(),
   embed_model: z.string().optional(),
+  embed_provider: EmbedProvider.optional(),
 });
 export type LLMConfigTestRequest = z.infer<typeof LLMConfigTestRequest>;
 

@@ -35,7 +35,33 @@ export default function AdminSettingsPage() {
     enabled: isAdmin && Boolean(token),
   });
 
-  const [provider, setProvider] = useState<"openai" | "vllm">("openai");
+  type LLMProvider = "openai" | "vllm";
+  type EmbedProvider = "openai" | "local";
+  type ProviderDraft = {
+    baseUrl: string;
+    apiKey: string;
+    chatModel: string;
+    embedModel: string;
+  };
+
+  const emptyDraft: ProviderDraft = {
+    baseUrl: "",
+    apiKey: "",
+    chatModel: "",
+    embedModel: "",
+  };
+
+  const [provider, setProvider] = useState<LLMProvider>("openai");
+  const [embedProvider, setEmbedProvider] = useState<EmbedProvider>("openai");
+  const [providerDrafts, setProviderDrafts] = useState<Record<LLMProvider, ProviderDraft>>({
+    openai: {
+      baseUrl: "",
+      apiKey: "",
+      chatModel: "gpt-4o-mini",
+      embedModel: "text-embedding-3-small",
+    },
+    vllm: { ...emptyDraft },
+  });
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showKeyInput, setShowKeyInput] = useState(false);
@@ -58,10 +84,29 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     const data = cfgQuery.data?.config;
     if (!data) return;
-    setProvider((data.provider as any) ?? "openai");
-    setBaseUrl(data.base_url ?? "");
-    setChatModel(data.chat_model ?? "gpt-4o-mini");
-    setEmbedModel(data.embed_model ?? "text-embedding-3-small");
+    const nextProvider = (data.provider as LLMProvider) ?? "openai";
+    const hasVllmConfig = nextProvider === "vllm" && Boolean(data.base_url);
+    const nextEmbedProvider = (data.embed_provider as EmbedProvider) ?? (nextProvider === "vllm" ? "local" : "openai");
+    const defaultEmbedModel = nextEmbedProvider === "local"
+      ? "sentence-transformers/all-MiniLM-L6-v2"
+      : "text-embedding-3-small";
+    const nextDraft: ProviderDraft = {
+      baseUrl: data.base_url ?? "",
+      apiKey: "",
+      chatModel: nextProvider === "openai"
+        ? data.chat_model ?? "gpt-4o-mini"
+        : hasVllmConfig ? (data.chat_model ?? "") : "",
+      embedModel: data.embed_model ?? defaultEmbedModel,
+    };
+    setProvider(nextProvider);
+    setEmbedProvider(nextEmbedProvider);
+    setProviderDrafts((prev) => ({
+      ...prev,
+      [nextProvider]: nextDraft,
+    }));
+    setBaseUrl(nextDraft.baseUrl);
+    setChatModel(nextDraft.chatModel);
+    setEmbedModel(nextDraft.embedModel);
     setEmbedChanged(false);
     if (data.temperature_default !== undefined) setTemperature(data.temperature_default);
     if (data.top_k_default !== undefined) setTopK(data.top_k_default);
@@ -69,6 +114,53 @@ export default function AdminSettingsPage() {
     if (data.upload_dir) setUploadDir(data.upload_dir);
     if (data.max_upload_mb !== undefined) setMaxUploadMb(data.max_upload_mb);
   }, [cfgQuery.data]);
+
+  const handleProviderChange = (next: LLMProvider) => {
+    if (next === provider) return;
+    const nextDraft = providerDrafts[next] ?? emptyDraft;
+    setProviderDrafts((prev) => ({
+      ...prev,
+      [provider]: { baseUrl, apiKey, chatModel, embedModel },
+    }));
+    const nextChatModel = nextDraft.chatModel;
+    const nextEmbedModel = nextDraft.embedModel;
+    setProvider(next);
+    if (next === "vllm") {
+      setEmbedProvider("local");
+    }
+    setBaseUrl(nextDraft.baseUrl);
+    setApiKey(nextDraft.apiKey);
+    setChatModel(nextChatModel);
+    setEmbedModel(nextEmbedModel);
+    setShowKeyInput(false);
+    setChatOptions([]);
+    setEmbedOptions([]);
+    setTestResult(null);
+    setEmbedTestResult(null);
+    setDiscoverError(null);
+    setEmbedChanged(false);
+  };
+
+  const handleEmbedProviderChange = (next: EmbedProvider) => {
+    if (next === embedProvider) return;
+    setEmbedProvider(next);
+    setEmbedOptions([]);
+    setEmbedTestResult(null);
+    setEmbedChanged(true);
+    if (next === "local") {
+      if (!embedModel || embedModel === "text-embedding-3-small") {
+        setEmbedModel("sentence-transformers/all-MiniLM-L6-v2");
+      }
+    } else if (!embedModel || embedModel.startsWith("sentence-transformers/")) {
+      setEmbedModel("text-embedding-3-small");
+    }
+  };
+
+  const hasStoredKey = Boolean(cfgQuery.data?.config.has_api_key);
+  const missingApiKey = (provider === "openai" || embedProvider === "openai") && !(hasStoredKey || apiKey);
+  const missingBaseUrl = provider === "vllm" && !baseUrl;
+  const missingModels = !chatModel || !embedModel;
+  const canSave = !(missingApiKey || missingBaseUrl || missingModels);
 
   const testMutation = useMutation({
     retry: false,
@@ -83,6 +175,7 @@ export default function AdminSettingsPage() {
           api_key: apiKey || undefined,
           chat_model: chatModel,
           embed_model: embedModel,
+          embed_provider: embedProvider,
         }, { signal: ac.signal });
         return res;
       } finally {
@@ -108,6 +201,7 @@ export default function AdminSettingsPage() {
         api_key: showKeyInput ? apiKey || undefined : undefined,
         chat_model: chatModel,
         embed_model: embedModel,
+        embed_provider: embedProvider,
         temperature_default: temperature,
         top_k_default: topK,
         index_dir: indexDir || undefined,
@@ -164,7 +258,11 @@ export default function AdminSettingsPage() {
                   <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.provider")}</label>
                   <StatusChip cfg={cfgQuery.data?.config} t={t} />
                 </div>
-                <select value={provider} onChange={(e) => setProvider(e.target.value as any)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
+                <select
+                  value={provider}
+                  onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                >
                   <option value="openai">OpenAI</option>
                   <option value="vllm">vLLM (OpenAI-compatible)</option>
                 </select>
@@ -173,6 +271,7 @@ export default function AdminSettingsPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.baseUrl")}</label>
                     <Input placeholder="http://localhost:8001/v1" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">{t("adminSettings.baseUrlHelp")}</p>
                   </div>
                 ) : null}
 
@@ -186,7 +285,9 @@ export default function AdminSettingsPage() {
                       <Button variant="outline" size="sm" onClick={() => { setShowKeyInput(true); setApiKey(""); }}>{t("adminSettings.replaceKey")}</Button>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">{t("adminSettings.apiKeyHelp")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {provider === "openai" ? t("adminSettings.apiKeyHelpOpenai") : t("adminSettings.apiKeyHelpVllm")}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -204,10 +305,21 @@ export default function AdminSettingsPage() {
                           base_url: baseUrl || undefined,
                           api_key: apiKey || undefined,
                         }, { signal: ac.signal });
-                        setChatOptions(res.chat_models || []);
-                        setEmbedOptions(res.embed_models || []);
-                        if (res.chat_models?.length) setChatModel((prev) => prev || res.chat_models[0]);
-                        if (res.embed_models?.length) setEmbedModel((prev) => prev || res.embed_models[0]);
+                        if (!res.raw_models?.length) {
+                          setChatOptions([]);
+                          setEmbedOptions([]);
+                          setDiscoverError(t("adminSettings.modelsEmpty"));
+                        } else {
+                          setChatOptions(res.chat_models || []);
+                          setEmbedOptions(res.embed_models || []);
+                        }
+                        if (res.chat_models?.length) {
+                          const next = res.chat_models[0];
+                          setChatModel((prev) => prev || next);
+                        }
+                        if (embedProvider === "openai" && res.embed_models?.length) {
+                          setEmbedModel((prev) => prev || res.embed_models[0]);
+                        }
                       } catch (e: any) {
                         setDiscoverError(e?.name === 'AbortError' ? 'Discovery timed out' : (e?.message || 'Discovery failed'));
                       } finally {
@@ -217,34 +329,72 @@ export default function AdminSettingsPage() {
                     }}>{discovering ? t("common.loading") : t("adminSettings.refreshModels")}</Button>
                   </div>
                 </div>
+                {provider === "vllm" ? (
+                  <p className="text-xs text-muted-foreground">{t("adminSettings.modelsHintVllm")}</p>
+                ) : null}
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("admin.runtime.chatModel")}</span>
                     {chatOptions.length > 0 ? (
-                      <select value={chatModel} onChange={(e) => setChatModel(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
+                      <select
+                        value={chatModel}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setChatModel(next);
+                        }}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                      >
                         {chatOptions.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
                     ) : (
-                      <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)} />
+                      <Input
+                        placeholder="model-id"
+                        value={chatModel}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setChatModel(next);
+                        }}
+                      />
                     )}
                   </label>
                   <label className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("admin.runtime.embeddingModel")}</span>
-                    {embedOptions.length > 0 ? (
+                    {embedProvider === "local" ? (
+                      <>
+                        <Input value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
+                        <p className="text-xs text-muted-foreground">{t("adminSettings.localEmbedHelp")}</p>
+                      </>
+                    ) : embedOptions.length > 0 ? (
                       <select value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm">
                         {embedOptions.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
                     ) : (
-                      <Input value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
+                      <Input placeholder="embedding-model-id" value={embedModel} onChange={(e) => { setEmbedModel(e.target.value); setEmbedChanged(true); }} />
                     )}
                   </label>
                 </div>
                 {discoverError ? <p className="text-xs text-destructive">{discoverError}</p> : null}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t("adminSettings.embedProvider")}</span>
+                    <select
+                      value={embedProvider}
+                      onChange={(e) => handleEmbedProviderChange(e.target.value as EmbedProvider)}
+                      disabled={provider === "vllm"}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                    >
+                      <option value="openai">{t("adminSettings.embedProviderOpenai")}</option>
+                      <option value="local">{t("adminSettings.embedProviderLocal")}</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">{t("adminSettings.embedProviderHelp")}</p>
+                  </label>
+                </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-2">
@@ -275,14 +425,15 @@ export default function AdminSettingsPage() {
                   </label>
                 </div>
 
-                <div className="flex gap-3">
-                  <PendingButton type="button" variant="outline" onClick={() => testMutation.mutate()} isPending={testMutation.isPending} pendingLabel={t("adminSettings.testing")}>
+                <div className="flex flex-wrap gap-3">
+                  <PendingButton type="button" variant="outline" onClick={() => testMutation.mutate()} isPending={testMutation.isPending} pendingLabel={t("adminSettings.testing")} disabled={!canSave}>
                     {t("adminSettings.testButton")}
                   </PendingButton>
                   <PendingButton
                     type="button"
                     variant="outline"
                     onClick={() => {
+                      if (!canSave) return;
                       if (!token) return;
                       setEmbedTestResult(null);
                       const ac = new AbortController();
@@ -294,6 +445,7 @@ export default function AdminSettingsPage() {
                             base_url: baseUrl || undefined,
                             api_key: apiKey || undefined,
                             embed_model: embedModel,
+                            embed_provider: embedProvider,
                           }, { signal: ac.signal });
                           setEmbedTestResult(res.ok ? `${t("adminSettings.test.ok")} (${t("adminSettings.embeddingDim")}: ${res.dim ?? "?"})` : res.message || t("adminSettings.test.fail"));
                         } catch (e: any) {
@@ -304,14 +456,16 @@ export default function AdminSettingsPage() {
                       })();
                     }}
                     isPending={false}
+                    disabled={!canSave}
                     pendingLabel={t("adminSettings.testingEmbeddings")}
                   >
                     {t("adminSettings.testEmbeddings")}
                   </PendingButton>
-                  <PendingButton type="button" onClick={() => saveMutation.mutate()} isPending={saveMutation.isPending} pendingLabel={t("common.saving")}>
+                  <PendingButton type="button" onClick={() => saveMutation.mutate()} isPending={saveMutation.isPending} pendingLabel={t("common.saving")} disabled={!canSave}>
                     {t("common.save")}
                   </PendingButton>
                 </div>
+                {!canSave ? <p className="text-xs text-muted-foreground">{t("adminSettings.requiredFields")}</p> : null}
                 {savingError ? <p className="text-xs text-destructive">{savingError}</p> : null}
                 {testResult ? <p className="text-xs text-muted-foreground">{testResult}</p> : null}
                 {embedTestResult ? <p className="text-xs text-muted-foreground">{embedTestResult}</p> : null}

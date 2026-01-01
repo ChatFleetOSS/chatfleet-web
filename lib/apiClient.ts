@@ -194,7 +194,7 @@ export async function removeRagUser(token: string, body: RagUserUpsertRequest) {
 
 export async function deleteRag(token: string, ragSlug: string, confirmation: string) {
   return request<RagDeleteResponse>({
-    path: "/admin/rag/delete",
+    path: "/rag/delete",
     method: "POST",
     token,
     body: { rag_slug: ragSlug, confirmation },
