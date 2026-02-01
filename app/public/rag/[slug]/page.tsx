@@ -22,6 +22,15 @@ const normalizeSuggestions = (inputs: string[] | undefined): string[] => {
   const out: string[] = [];
   const push = (val: string) => {
     const cleaned = val.trim().replace(/^[\[\"]+/, "").replace(/[\]\"]+$/, "").trim();
+    if (!cleaned) return;
+    if (cleaned.includes('","')) {
+      cleaned
+        .split(/"\s*,\s*"/g)
+        .map((part) => part.replace(/^"+|"+$/g, "").trim())
+        .filter(Boolean)
+        .forEach((part) => push(part));
+      return;
+    }
     if (cleaned && !out.includes(cleaned)) {
       out.push(cleaned);
     }
@@ -159,6 +168,14 @@ export default function PublicRagPage() {
   }, [selectedRag, t, formatWithCitations]);
 
   const runtime = useLocalRuntime(chatAdapter);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      // Debug visibility for suggestions
+      console.log("[public rag] suggestions raw", summary?.suggestions);
+      console.log("[public rag] suggestions normalized", normalizeSuggestions(summary?.suggestions));
+    }
+  }, [summary?.suggestions]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

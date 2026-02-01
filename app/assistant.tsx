@@ -26,6 +26,16 @@ const normalizeSuggestions = (inputs: string[] | undefined): string[] => {
   const out: string[] = [];
   const push = (val: string) => {
     const cleaned = val.trim().replace(/^[\[\"]+/, "").replace(/[\]\"]+$/, "").trim();
+    if (!cleaned) return;
+    // If a single string contains multiple quoted prompts separated by commas, split them.
+    if (cleaned.includes('","')) {
+      cleaned
+        .split(/"\s*,\s*"/g)
+        .map((part) => part.replace(/^"+|"+$/g, "").trim())
+        .filter(Boolean)
+        .forEach((part) => push(part));
+      return;
+    }
     if (cleaned && !out.includes(cleaned)) {
       out.push(cleaned);
     }
