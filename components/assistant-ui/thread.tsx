@@ -191,7 +191,7 @@ const ThreadSuggestions: FC<{
           >
             <Button
               variant="ghost"
-              className="aui-thread-welcome-suggestion h-auto w-full flex-1 flex-wrap items-start justify-start gap-1 rounded-3xl border px-5 py-4 text-left text-sm @md:flex-col dark:hover:bg-accent/60"
+              className="aui-thread-welcome-suggestion h-auto inline-flex max-w-full flex-wrap items-start justify-start gap-2 rounded-3xl border px-4 py-3 text-left text-sm dark:hover:bg-accent/60"
               aria-label={suggestedAction.prompt}
             >
               <span className="aui-thread-welcome-suggestion-text-1 font-medium">
