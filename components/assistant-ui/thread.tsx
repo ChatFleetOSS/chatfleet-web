@@ -35,7 +35,27 @@ import {
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 
-export const Thread: FC = () => {
+type SuggestionConfig = {
+  prompt: string;
+  label?: string;
+  title?: string;
+};
+
+type ThreadProps = {
+  composerPlaceholder?: string;
+  suggestions?: SuggestionConfig[];
+  suggestionsPlacement?: "welcome" | "composer";
+  suggestionsLabel?: string;
+  assistantLabel?: string;
+};
+
+export const Thread: FC<ThreadProps> = ({
+  composerPlaceholder,
+  suggestions,
+  suggestionsPlacement = "welcome",
+  suggestionsLabel,
+  assistantLabel,
+}) => {
   return (
     <LazyMotion features={domAnimation}>
       <MotionConfig reducedMotion="user">
@@ -50,14 +70,20 @@ export const Thread: FC = () => {
             className="aui-thread-viewport flex h-full flex-col overflow-x-hidden overflow-y-auto px-4 py-6"
           >
             <ThreadPrimitive.If empty>
-              <ThreadWelcome />
+              <ThreadWelcome
+                suggestions={
+                  suggestionsPlacement === "welcome" ? suggestions : undefined
+                }
+              />
             </ThreadPrimitive.If>
 
             <ThreadPrimitive.Messages
               components={{
                 UserMessage,
                 EditComposer,
-                AssistantMessage,
+                AssistantMessage: () => (
+                  <AssistantMessage label={assistantLabel} />
+                ),
               }}
             />
 
@@ -66,15 +92,48 @@ export const Thread: FC = () => {
             </ThreadPrimitive.If>
           </ThreadPrimitive.Viewport>
 
-          <Composer />
+          <Composer
+            placeholder={composerPlaceholder}
+            inlineSuggestions={
+              suggestionsPlacement === "composer" ? suggestions : undefined
+            }
+            suggestionsLabel={suggestionsLabel}
+          />
         </ThreadPrimitive.Root>
       </MotionConfig>
     </LazyMotion>
   );
 };
 
-const ThreadWelcome: FC = () => {
+const ThreadWelcome: FC<{
+  suggestions?: SuggestionConfig[];
+}> = ({ suggestions }) => {
   const t = useTranslation();
+  const suggestionItems =
+    suggestions ??
+    [
+      {
+        title: t("thread.suggestion.weather.title"),
+        label: t("thread.suggestion.weather.description"),
+        prompt: t("thread.suggestion.weather.action"),
+      },
+      {
+        title: t("thread.suggestion.hooks.title"),
+        label: t("thread.suggestion.hooks.description"),
+        prompt: t("thread.suggestion.hooks.action"),
+      },
+      {
+        title: t("thread.suggestion.sql.title"),
+        label: t("thread.suggestion.sql.description"),
+        prompt: t("thread.suggestion.sql.action"),
+      },
+      {
+        title: t("thread.suggestion.meal.title"),
+        label: t("thread.suggestion.meal.description"),
+        prompt: t("thread.suggestion.meal.action"),
+      },
+    ];
+
   return (
     <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-[var(--thread-max-width)] flex-grow flex-col">
       <div className="aui-thread-welcome-center flex w-full flex-grow flex-col items-center justify-center">
@@ -98,37 +157,24 @@ const ThreadWelcome: FC = () => {
           </m.div>
         </div>
       </div>
-      <ThreadSuggestions />
+      <ThreadSuggestions suggestions={suggestionItems} send />
     </div>
   );
 };
 
-const ThreadSuggestions: FC = () => {
-  const t = useTranslation();
+const ThreadSuggestions: FC<{
+  suggestions: SuggestionConfig[];
+  send?: boolean;
+  label?: string;
+}> = ({ suggestions, send = false, label }) => {
   return (
     <div className="aui-thread-welcome-suggestions grid w-full gap-2 pb-4 @md:grid-cols-2">
-      {[
-        {
-          title: t("thread.suggestion.weather.title"),
-          label: t("thread.suggestion.weather.description"),
-          action: t("thread.suggestion.weather.action"),
-        },
-        {
-          title: t("thread.suggestion.hooks.title"),
-          label: t("thread.suggestion.hooks.description"),
-          action: t("thread.suggestion.hooks.action"),
-        },
-        {
-          title: t("thread.suggestion.sql.title"),
-          label: t("thread.suggestion.sql.description"),
-          action: t("thread.suggestion.sql.action"),
-        },
-        {
-          title: t("thread.suggestion.meal.title"),
-          label: t("thread.suggestion.meal.description"),
-          action: t("thread.suggestion.meal.action"),
-        },
-      ].map((suggestedAction, index) => (
+      {label ? (
+        <div className="col-span-full text-sm font-medium text-muted-foreground">
+          {label}
+        </div>
+      ) : null}
+      {suggestions.map((suggestedAction, index) => (
         <m.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -138,21 +184,26 @@ const ThreadSuggestions: FC = () => {
           className="aui-thread-welcome-suggestion-display [&:nth-child(n+3)]:hidden @md:[&:nth-child(n+3)]:block"
         >
           <ThreadPrimitive.Suggestion
-            prompt={suggestedAction.action}
-            send
+            prompt={suggestedAction.prompt}
+            send={send}
+            clearComposer
             asChild
           >
             <Button
               variant="ghost"
               className="aui-thread-welcome-suggestion h-auto w-full flex-1 flex-wrap items-start justify-start gap-1 rounded-3xl border px-5 py-4 text-left text-sm @md:flex-col dark:hover:bg-accent/60"
-              aria-label={suggestedAction.action}
+              aria-label={suggestedAction.prompt}
             >
-              <span className="aui-thread-welcome-suggestion-text-1 font-medium">
-                {suggestedAction.title}
-              </span>
-              <span className="aui-thread-welcome-suggestion-text-2 text-muted-foreground">
-                {suggestedAction.label}
-              </span>
+              {suggestedAction.title ? (
+                <span className="aui-thread-welcome-suggestion-text-1 font-medium">
+                  {suggestedAction.title}
+                </span>
+              ) : null}
+              {suggestedAction.label ? (
+                <span className="aui-thread-welcome-suggestion-text-2 text-muted-foreground">
+                  {suggestedAction.label}
+                </span>
+              ) : null}
             </Button>
           </ThreadPrimitive.Suggestion>
         </m.div>
@@ -161,19 +212,62 @@ const ThreadSuggestions: FC = () => {
   );
 };
 
-const Composer: FC = () => {
+type ComposerProps = {
+  placeholder?: string;
+  inlineSuggestions?: SuggestionConfig[];
+  suggestionsLabel?: string;
+};
+
+const Composer: FC<ComposerProps> = ({
+  placeholder,
+  inlineSuggestions,
+  suggestionsLabel,
+}) => {
   const t = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("thread.composer.placeholder");
   return (
     <div className="aui-composer-wrapper border-t border-border bg-background px-4 pb-6 pt-4">
       <ComposerPrimitive.Root className="aui-composer-root relative mx-auto flex w-full max-w-[var(--thread-max-width)] flex-col rounded-3xl border border-border bg-muted px-1 pt-2 shadow-[0_9px_9px_0px_rgba(0,0,0,0.01),0_2px_5px_0px_rgba(0,0,0,0.06)] dark:border-muted-foreground/15">
         <ComposerAttachments />
         <ComposerPrimitive.Input
-          placeholder={t("thread.composer.placeholder")}
+          placeholder={resolvedPlaceholder}
           className="aui-composer-input mb-1 max-h-32 min-h-16 w-full resize-none bg-transparent px-3.5 pt-1.5 pb-3 text-base outline-none placeholder:text-muted-foreground focus:outline-primary"
           rows={1}
           autoFocus
           aria-label={t("thread.composer.ariaLabel")}
         />
+        {inlineSuggestions && inlineSuggestions.length > 0 ? (
+          <div
+            className="aui-inline-suggestions mx-1 mb-2 flex flex-col gap-2 px-2"
+            role="group"
+            aria-label={suggestionsLabel ?? t("thread.suggestionGroupLabel")}
+          >
+            <div className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              {suggestionsLabel ?? t("thread.suggestionGroupLabel")}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {inlineSuggestions.map((suggestion) => (
+                <ThreadPrimitive.Suggestion
+                  key={suggestion.prompt}
+                  prompt={suggestion.prompt}
+                  send={false}
+                  clearComposer
+                  asChild
+                >
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    aria-label={suggestion.prompt}
+                    type="button"
+                  >
+                    {suggestion.label ?? suggestion.prompt}
+                  </Button>
+                </ThreadPrimitive.Suggestion>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <ComposerAction />
       </ComposerPrimitive.Root>
     </div>
@@ -229,7 +323,7 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC = () => {
+const AssistantMessage: FC<{ label?: string }> = ({ label }) => {
   return (
     <MessagePrimitive.Root asChild>
       <div
@@ -237,6 +331,11 @@ const AssistantMessage: FC = () => {
         data-role="assistant"
       >
         <div className="aui-assistant-message-content mx-2 leading-7 break-words text-foreground">
+          {label ? (
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              {label}
+            </div>
+          ) : null}
           <MessagePrimitive.Parts
             components={{
               Text: MarkdownText,

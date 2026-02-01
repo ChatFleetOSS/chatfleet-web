@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon, Globe2Icon } from "lucide-react";
 
-import { getPublicRagDocs, listPublicRags } from "@/lib/apiClient";
+import { listPublicRags } from "@/lib/apiClient";
 import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Thread } from "@/components/assistant-ui/thread";
@@ -32,13 +32,36 @@ export default function PublicRagPage() {
   });
   const summary = ragList?.items.find((item) => item.slug === slug);
 
-  const docsQuery = useQuery({
-    queryKey: ["public-rag-docs", slug],
-    queryFn: () => getPublicRagDocs(slug),
-    enabled: Boolean(slug),
-  });
-
   const [selectedRag] = useState(slug);
+
+  const displayName = useMemo(() => {
+    if (summary?.name) return summary.name;
+    if (slug) {
+      const spaced = slug
+        .replace(/[-_]/g, " ")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .trim();
+      const titled = spaced
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+      return titled || slug;
+    }
+    throw new Error("Missing public assistant slug");
+  }, [slug, summary?.name]);
+
+  const description = summary?.description ?? t("publicRag.description.missing");
+
+  const suggestions = useMemo(
+    () => [
+      { prompt: t("publicRag.suggestions.q1") },
+      { prompt: t("publicRag.suggestions.q2") },
+      { prompt: t("publicRag.suggestions.q3") },
+      { prompt: t("publicRag.suggestions.q4") },
+    ],
+    [t],
+  );
 
   const formatWithCitations = useCallback(
     (body: string, citations: Citation[]) => {
@@ -115,56 +138,62 @@ export default function PublicRagPage() {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div className="flex h-full flex-1 flex-col">
+      <div className="flex h-full flex-1 flex-col bg-background">
         <header className="border-b border-border bg-background px-6 py-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/public")} className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/public")}
+            className="flex items-center gap-2"
+          >
             <ArrowLeftIcon aria-hidden="true" className="size-4" />
             <span>{t("publicRag.back")}</span>
           </Button>
         </header>
 
-        <div className="border-b border-border bg-muted/30 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-              <Globe2Icon className="size-4" />
-              {t("publicRag.visibility.public")}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t("publicRag.hero.subtitle")}
-            </p>
-          </div>
-          <div className="mt-3 space-y-1">
-            <h1 className="text-2xl font-semibold text-foreground">{summary?.name ?? slug}</h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {summary?.description || t("publicRag.hero.descriptionFallback")}
-            </p>
-          </div>
-        </div>
-
-        <div className="border-b border-border px-6 py-4">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            {t("publicRag.docsTitle")}
-          </div>
-          <div className="mt-2 space-y-2">
-            {docsQuery.data?.docs?.length ? (
-              docsQuery.data.docs.map((doc) => (
-                <div
-                  key={doc.doc_id}
-                  className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"
-                >
-                  <span className="text-sm text-foreground">{doc.filename}</span>
-                  <span className="text-xs text-muted-foreground">{doc.chunk_count} chunks</span>
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-6">
+            <section className="rounded-2xl border border-border bg-muted/50 p-5 shadow-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+                  <Globe2Icon className="size-4" />
+                  {t("publicRag.visibility.public")}
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">—</div>
-            )}
-          </div>
-        </div>
+                <p className="text-sm text-muted-foreground">
+                  {t("publicRag.hero.subtitle")}
+                </p>
+              </div>
+              <div className="mt-3 space-y-2">
+                <h1 className="text-3xl font-semibold leading-tight text-foreground">
+                  {displayName}
+                </h1>
+                <p className="text-base text-muted-foreground leading-relaxed">
+                  {description}
+                </p>
+              </div>
+            </section>
 
-        <div className="flex-1 overflow-hidden">
-          <Thread />
-        </div>
+            <section className="flex min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="border-b border-border px-5 py-4">
+                <div className="text-sm font-semibold text-foreground">
+                  {t("publicRag.prompt.title")}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t("publicRag.prompt.subtitle")}
+                </p>
+              </div>
+              <div className="flex-1">
+                <Thread
+                  assistantLabel={t("publicRag.answerLabel")}
+                  composerPlaceholder={t("publicRag.composer.placeholder")}
+                  suggestions={suggestions}
+                  suggestionsPlacement="composer"
+                  suggestionsLabel={t("publicRag.suggestions.title")}
+                />
+              </div>
+            </section>
+          </div>
+        </main>
       </div>
     </AssistantRuntimeProvider>
   );
