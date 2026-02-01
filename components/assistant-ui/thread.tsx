@@ -180,8 +180,8 @@ const ThreadSuggestions: FC<{
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ delay: 0.05 * index }}
-          key={`suggested-action-${suggestedAction.title}-${index}`}
-          className="aui-thread-welcome-suggestion-display [&:nth-child(n+3)]:hidden @md:[&:nth-child(n+3)]:block"
+          key={`suggested-action-${suggestedAction.title ?? suggestedAction.prompt}-${index}`}
+          className="aui-thread-welcome-suggestion-display"
         >
           <ThreadPrimitive.Suggestion
             prompt={suggestedAction.prompt}
@@ -191,7 +191,7 @@ const ThreadSuggestions: FC<{
           >
             <Button
               variant="ghost"
-              className="aui-thread-welcome-suggestion h-auto inline-flex max-w-full flex-wrap items-start justify-start gap-2 rounded-3xl border px-4 py-3 text-left text-sm dark:hover:bg-accent/60"
+              className="aui-thread-welcome-suggestion h-auto inline-flex max-w-full flex-wrap items-start justify-start gap-2 rounded-3xl border px-4 py-3 text-left text-sm dark:hover:bg-accent/60 whitespace-normal"
               aria-label={suggestedAction.prompt}
             >
               <span className="aui-thread-welcome-suggestion-text-1 font-medium">
