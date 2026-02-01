@@ -3,12 +3,11 @@
 import { useMemo, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, Globe2Icon } from "lucide-react";
 
 import { getPublicRagDocs, listPublicRags } from "@/lib/apiClient";
 import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
   AssistantRuntimeProvider,
@@ -117,51 +116,49 @@ export default function PublicRagPage() {
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className="flex h-full flex-1 flex-col">
-        <header className="flex flex-col gap-2 border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/public")} className="flex items-center gap-2">
-              <ArrowLeftIcon aria-hidden="true" className="size-4" />
-              <span>{t("publicRag.back")}</span>
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-foreground">{summary?.name ?? slug}</span>
-              <span className="text-sm text-muted-foreground">{summary?.description}</span>
-            </div>
-          </div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            {t("publicRag.visibility.public")}
-          </div>
+        <header className="border-b border-border bg-background px-6 py-4">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/public")} className="flex items-center gap-2">
+            <ArrowLeftIcon aria-hidden="true" className="size-4" />
+            <span>{t("publicRag.back")}</span>
+          </Button>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 border-b border-border px-6 py-3 text-sm text-muted-foreground md:grid-cols-2">
-          <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              {t("publicRag.metadataTitle")}
+        <div className="border-b border-border bg-muted/30 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+              <Globe2Icon className="size-4" />
+              {t("publicRag.visibility.public")}
             </div>
-            <div className="mt-2 space-y-1 text-foreground">
-              <div className="text-sm font-medium">{summary?.name ?? slug}</div>
-              <div className="text-sm text-muted-foreground">{summary?.description}</div>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {t("publicRag.hero.subtitle")}
+            </p>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              {t("publicRag.docsTitle")}
-            </div>
-            <div className="mt-2 space-y-1">
-              {docsQuery.data?.docs?.length ? (
-                docsQuery.data.docs.map((doc) => (
-                  <div key={doc.doc_id} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                    <span className="text-sm text-foreground">{doc.filename}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {doc.chunk_count} chunks
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">—</div>
-              )}
-            </div>
+          <div className="mt-3 space-y-1">
+            <h1 className="text-2xl font-semibold text-foreground">{summary?.name ?? slug}</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {summary?.description || t("publicRag.hero.descriptionFallback")}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-b border-border px-6 py-4">
+          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            {t("publicRag.docsTitle")}
+          </div>
+          <div className="mt-2 space-y-2">
+            {docsQuery.data?.docs?.length ? (
+              docsQuery.data.docs.map((doc) => (
+                <div
+                  key={doc.doc_id}
+                  className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"
+                >
+                  <span className="text-sm text-foreground">{doc.filename}</span>
+                  <span className="text-xs text-muted-foreground">{doc.chunk_count} chunks</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">—</div>
+            )}
           </div>
         </div>
 

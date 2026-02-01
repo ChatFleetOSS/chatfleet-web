@@ -106,6 +106,8 @@ export const translations = {
     "publicRag.docsTitle": "Documents",
     "publicRag.metadataTitle": "Metadata",
     "publicRag.visibility.public": "Public",
+    "publicRag.hero.subtitle": "Anyone can chat with this assistant — no login required.",
+    "publicRag.hero.descriptionFallback": "This assistant is public. Start a conversation or browse the source documents below.",
     "publicRag.list.title": "Public assistants",
     "publicRag.list.subtitle": "Anyone can open and chat with these assistants—no login required.",
     "publicRag.list.empty": "No public assistants yet.",
@@ -384,6 +386,8 @@ export const translations = {
     "publicRag.docsTitle": "Documents",
     "publicRag.metadataTitle": "Métadonnées",
     "publicRag.visibility.public": "Public",
+    "publicRag.hero.subtitle": "Tout le monde peut discuter avec cet assistant — sans se connecter.",
+    "publicRag.hero.descriptionFallback": "Cet assistant est public. Lancez une conversation ou explorez les documents sources ci-dessous.",
 
     "admin.header.overview": "Console d’administration",
     "admin.header.title": "Surface de contrôle",
