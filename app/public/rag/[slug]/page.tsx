@@ -17,6 +17,34 @@ import {
 import type { Citation, ChatRequest } from "@/schemas";
 import { streamChatPublic } from "@/lib/chat/streamPublic";
 
+const normalizeSuggestions = (inputs: string[] | undefined): string[] => {
+  if (!inputs || inputs.length === 0) return [];
+  const out: string[] = [];
+  const push = (val: string) => {
+    const cleaned = val.trim().replace(/^[\[\"]+/, "").replace(/[\]\"]+$/, "").trim();
+    if (cleaned && !out.includes(cleaned)) {
+      out.push(cleaned);
+    }
+  };
+  for (const item of inputs) {
+    if (!item) continue;
+    const text = String(item).trim();
+    if (text.startsWith("[") && text.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          parsed.filter((p) => typeof p === "string").forEach((p) => push(p));
+          continue;
+        }
+      } catch {
+        // fall through
+      }
+    }
+    push(text);
+  }
+  return out.slice(0, 6);
+};
+
 export default function PublicRagPage() {
   const params = useParams<{ slug: string }>();
   const slug = useMemo(
@@ -180,7 +208,7 @@ export default function PublicRagPage() {
               </div>
               <div className="flex-1">
                 <Thread
-                  suggestions={(summary?.suggestions ?? []).map((prompt) => ({ prompt }))}
+                  suggestions={normalizeSuggestions(summary?.suggestions).map((prompt) => ({ prompt }))}
                   suggestionsPlacement="welcome"
                 />
               </div>

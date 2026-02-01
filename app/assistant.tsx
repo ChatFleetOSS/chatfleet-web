@@ -21,6 +21,34 @@ type AssistantProps = {
   suggestions?: string[];
 };
 
+const normalizeSuggestions = (inputs: string[] | undefined): string[] => {
+  if (!inputs || inputs.length === 0) return [];
+  const out: string[] = [];
+  const push = (val: string) => {
+    const cleaned = val.trim().replace(/^[\[\"]+/, "").replace(/[\]\"]+$/, "").trim();
+    if (cleaned && !out.includes(cleaned)) {
+      out.push(cleaned);
+    }
+  };
+  for (const item of inputs) {
+    if (!item) continue;
+    const text = String(item).trim();
+    if (text.startsWith("[") && text.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          parsed.filter((p) => typeof p === "string").forEach((p) => push(p));
+          continue;
+        }
+      } catch {
+        // fall through to push raw
+      }
+    }
+    push(text);
+  }
+  return out.slice(0, 6);
+};
+
 export const Assistant = ({ ragSlug, suggestions }: AssistantProps) => {
   const { token } = useAuth();
   const [rags, setRags] = useState<string[]>(ragSlug ? [ragSlug] : []);
@@ -184,8 +212,8 @@ export const Assistant = ({ ragSlug, suggestions }: AssistantProps) => {
 
   const runtime = useLocalRuntime(chatAdapter);
   const suggestionPrompts = useMemo(() => {
-    const fromProp = suggestions ?? [];
-    const fromList = selectedRag ? ragSuggestions[selectedRag] ?? [] : [];
+    const fromProp = normalizeSuggestions(suggestions);
+    const fromList = normalizeSuggestions(selectedRag ? ragSuggestions[selectedRag] : []);
     const merged = fromProp.length ? fromProp : fromList;
     return merged.map((prompt) => ({ prompt }));
   }, [suggestions, ragSuggestions, selectedRag]);
