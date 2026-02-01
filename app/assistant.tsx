@@ -62,9 +62,11 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
         return "";
       }
 
-      const filtered = citations.filter(
-        (c) => c.filename?.trim().toLowerCase() !== "sources indisponibles.",
-      );
+      const filtered = citations.filter((c) => {
+        const name = (c.filename ?? "").trim().toLowerCase();
+        const normalized = name.replace(/[.\s]+$/g, "");
+        return normalized !== "sources indisponibles";
+      });
 
       if (!filtered.length) {
         return trimmed;

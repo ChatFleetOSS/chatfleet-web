@@ -58,9 +58,11 @@ export default function PublicRagPage() {
       const trimmed = body.trim();
       if (!trimmed && !citations.length) return "";
       if (!citations.length) return trimmed;
-      const filtered = citations.filter(
-        (c) => c.filename?.trim().toLowerCase() !== "sources indisponibles.",
-      );
+      const filtered = citations.filter((c) => {
+        const name = (c.filename ?? "").trim().toLowerCase();
+        const normalized = name.replace(/[.\s]+$/g, "");
+        return normalized !== "sources indisponibles";
+      });
       if (!filtered.length) return trimmed;
       const sources = filtered
         .map((citation, index) => `${index + 1}. ${citation.filename} · pages ${citation.pages.join(", ")}`)
