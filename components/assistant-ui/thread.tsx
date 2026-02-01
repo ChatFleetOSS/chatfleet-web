@@ -194,12 +194,10 @@ const ThreadSuggestions: FC<{
               className="aui-thread-welcome-suggestion h-auto w-full flex-1 flex-wrap items-start justify-start gap-1 rounded-3xl border px-5 py-4 text-left text-sm @md:flex-col dark:hover:bg-accent/60"
               aria-label={suggestedAction.prompt}
             >
-              {suggestedAction.title ? (
-                <span className="aui-thread-welcome-suggestion-text-1 font-medium">
-                  {suggestedAction.title}
-                </span>
-              ) : null}
-              {suggestedAction.label ? (
+              <span className="aui-thread-welcome-suggestion-text-1 font-medium">
+                {suggestedAction.title || suggestedAction.label || suggestedAction.prompt}
+              </span>
+              {suggestedAction.label && suggestedAction.label !== suggestedAction.title ? (
                 <span className="aui-thread-welcome-suggestion-text-2 text-muted-foreground">
                   {suggestedAction.label}
                 </span>
