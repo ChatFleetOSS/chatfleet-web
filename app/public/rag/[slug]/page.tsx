@@ -53,22 +53,16 @@ export default function PublicRagPage() {
 
   const description = summary?.description ?? t("publicRag.description.missing");
 
-  const suggestions = useMemo(
-    () => [
-      { prompt: t("publicRag.suggestions.q1") },
-      { prompt: t("publicRag.suggestions.q2") },
-      { prompt: t("publicRag.suggestions.q3") },
-      { prompt: t("publicRag.suggestions.q4") },
-    ],
-    [t],
-  );
-
   const formatWithCitations = useCallback(
     (body: string, citations: Citation[]) => {
       const trimmed = body.trim();
       if (!trimmed && !citations.length) return "";
       if (!citations.length) return trimmed;
-      const sources = citations
+      const filtered = citations.filter(
+        (c) => c.filename?.trim().toLowerCase() !== "sources indisponibles.",
+      );
+      if (!filtered.length) return trimmed;
+      const sources = filtered
         .map((citation, index) => `${index + 1}. ${citation.filename} · pages ${citation.pages.join(", ")}`)
         .join("\n");
       return `${trimmed}\n\n${t("assistant.sources")}:\n${sources}`.trim();
@@ -183,13 +177,7 @@ export default function PublicRagPage() {
                 </p>
               </div>
               <div className="flex-1">
-                <Thread
-                  assistantLabel={t("publicRag.answerLabel")}
-                  composerPlaceholder={t("publicRag.composer.placeholder")}
-                  suggestions={suggestions}
-                  suggestionsPlacement="composer"
-                  suggestionsLabel={t("publicRag.suggestions.title")}
-                />
+                <Thread />
               </div>
             </section>
           </div>

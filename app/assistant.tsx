@@ -62,11 +62,15 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
         return "";
       }
 
-      if (!citations.length) {
+      const filtered = citations.filter(
+        (c) => c.filename?.trim().toLowerCase() !== "sources indisponibles.",
+      );
+
+      if (!filtered.length) {
         return trimmed;
       }
 
-      const sources = citations
+      const sources = filtered
         .map((citation, index) =>
           t("assistant.sourcesEntry", {
             position: index + 1,
