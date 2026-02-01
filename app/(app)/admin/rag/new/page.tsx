@@ -39,6 +39,7 @@ export default function AdminRagCreatePage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<"idle" | "queued" | "running" | "done" | "error">("idle");
@@ -63,6 +64,7 @@ export default function AdminRagCreatePage() {
       slug: string;
       name: string;
       description: string;
+      visibility: "private" | "public";
       files: File[];
     }) => {
       if (!token) throw new Error("Missing token");
@@ -75,6 +77,7 @@ export default function AdminRagCreatePage() {
         slug: payload.slug,
         name: payload.name,
         description: payload.description,
+        visibility: payload.visibility,
       });
 
       if (payload.files.length > 0) {
@@ -186,6 +189,7 @@ export default function AdminRagCreatePage() {
       slug,
       name: trimmedName,
       description: trimmedDescription,
+      visibility,
       files,
     });
   }
@@ -273,6 +277,22 @@ export default function AdminRagCreatePage() {
                 <p className="text-xs text-muted-foreground">
                   {t("adminCreate.documentsHelp")}
                 </p>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground" htmlFor="visibility">
+                    {t("adminCreate.visibilityLabel")}
+                  </label>
+                  <select
+                    id="visibility"
+                    value={visibility}
+                    onChange={(e) => setVisibility(e.target.value as "private" | "public")}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                    disabled={createMutation.isPending || dialogOpen}
+                  >
+                    <option value="private">{t("adminCreate.visibilityPrivate")}</option>
+                    <option value="public">{t("adminCreate.visibilityPublic")}</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">{t("adminCreate.visibilityHelp")}</p>
+                </div>
                 {jobId ? (
                   <p className="text-xs text-muted-foreground">
                     {t("adminCreate.latestJob", { id: jobId })}

@@ -86,6 +86,7 @@ export const RagSummary = z.object({
   description: z.string(),
   chunks: z.number().int().min(0),
   last_updated: ISODate,
+  visibility: z.enum(["private", "public"]).default("private"),
 });
 export type RagSummary = z.infer<typeof RagSummary>;
 
@@ -100,6 +101,7 @@ export const RagCreateRequest = z.object({
   slug: RagSlug,
   name: z.string().min(1, "Name is required").max(120),
   description: z.string().min(1, "Description is required").max(500),
+  visibility: z.enum(["private", "public"]).default("private"),
 });
 export type RagCreateRequest = z.infer<typeof RagCreateRequest>;
 

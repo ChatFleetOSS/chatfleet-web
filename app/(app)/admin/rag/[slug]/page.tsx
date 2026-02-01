@@ -206,6 +206,13 @@ export default function AdminRagDetailPage() {
       { label: t("adminRag.metadata.slug"), value: ragSummary.slug },
       { label: t("adminRag.metadata.name"), value: ragSummary.name },
       {
+        label: t("adminRag.visibility.label"),
+        value:
+          ragSummary.visibility === "public"
+            ? t("adminRag.visibility.public")
+            : t("adminRag.visibility.private"),
+      },
+      {
         label: t("adminRag.metadata.descriptionLabel"),
         value: ragSummary.description ?? "—",
         full: true,

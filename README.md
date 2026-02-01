@@ -49,3 +49,7 @@ Known gaps / follow-ups:
 2. Persist chat threads and citations to `/chat` history; surface transcripts in the sidebar.
 3. Integrate pact consumer tests into CI and add provider verification job using FastAPI container.
 4. Add loading/error states for `/jobs/{id}` polling to track upload progress after initiation.
+
+## Public RAGs
+- Admins can set a RAG visibility to **public** during creation. Public RAGs are visible on `/public` and can be chatted with anonymously via `/public/rag/{slug}`.
+- Public API surface (no auth): `GET /api/public/rag/list`, `GET /api/public/rag/docs?rag_slug=...`, `POST /api/public/chat`, `POST /api/public/chat/stream`.

@@ -84,6 +84,18 @@ export async function listRags(token: string, params?: { limit?: number; cursor?
   });
 }
 
+export async function listPublicRags(params?: { limit?: number; cursor?: string }) {
+  const search = new URLSearchParams();
+  if (params?.limit) search.set("limit", String(params.limit));
+  if (params?.cursor) search.set("cursor", params.cursor);
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return request<RagListResponse>({
+    path: `/public/rag/list${suffix}`,
+    method: "GET",
+    schema: RagListSchema,
+  });
+}
+
 export async function listAdminRags(token: string, params?: { limit?: number; cursor?: string }) {
   const search = new URLSearchParams();
   if (params?.limit) search.set("limit", String(params.limit));
@@ -103,6 +115,15 @@ export async function getRagDocs(token: string, ragSlug: string) {
     path: `/rag/docs?${search.toString()}`,
     method: "GET",
     token,
+    schema: RagDocsSchema,
+  });
+}
+
+export async function getPublicRagDocs(ragSlug: string) {
+  const search = new URLSearchParams({ rag_slug: ragSlug });
+  return request<RagDocsResponse>({
+    path: `/public/rag/docs?${search.toString()}`,
+    method: "GET",
     schema: RagDocsSchema,
   });
 }
@@ -156,6 +177,23 @@ export async function chat(token: string, body: ChatRequest) {
     token,
     body,
     schema: ChatResponseSchema,
+  });
+}
+
+export async function publicChat(body: ChatRequest) {
+  return request<ChatResponse>({
+    path: "/public/chat",
+    method: "POST",
+    body,
+    schema: ChatResponseSchema,
+  });
+}
+
+export async function publicChatStream(body: ChatRequest) {
+  return request<ReadableStream<Uint8Array>>({
+    path: "/public/chat/stream",
+    method: "POST",
+    body,
   });
 }
 
