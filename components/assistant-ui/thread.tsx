@@ -157,7 +157,7 @@ const ThreadWelcome: FC<{
           </m.div>
         </div>
       </div>
-      <ThreadSuggestions suggestions={suggestionItems} send />
+      <ThreadSuggestions suggestions={suggestionItems} send={false} />
     </div>
   );
 };

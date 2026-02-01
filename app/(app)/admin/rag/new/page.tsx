@@ -52,6 +52,7 @@ export default function AdminRagCreatePage() {
     chunks_done: number;
   } | null>(null);
   const [jobPhase, setJobPhase] = useState<string | null>(null);
+  const [suggestionsReady, setSuggestionsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
@@ -113,8 +114,8 @@ export default function AdminRagCreatePage() {
   const shouldPollJob = Boolean(jobId && jobStatus !== "done" && jobStatus !== "error");
   const pendingRagName = createdName ?? name.trim();
   const pendingRagSlug = createdSlug ?? slug;
-  const showProcessing = dialogOpen && jobStatus !== "error" && jobStatus !== "done";
-  const showSuccess = dialogOpen && jobStatus === "done";
+  const showSuccess = dialogOpen && jobStatus === "done" && suggestionsReady;
+  const showProcessing = dialogOpen && !showSuccess && jobStatus !== "error";
   const showError = dialogOpen && jobStatus === "error";
 
   useEffect(() => {
@@ -143,6 +144,7 @@ export default function AdminRagCreatePage() {
         setJobProgress(progress);
         setJobTotals(totals);
         setJobPhase(phase);
+        setSuggestionsReady(Boolean(json.suggestions_ready));
         if (status === "done" || status === "error") {
           setJobError(json.error || null);
         }
@@ -185,6 +187,7 @@ export default function AdminRagCreatePage() {
     setJobError(null);
     setJobTotals(null);
     setJobPhase(null);
+    setSuggestionsReady(false);
     createMutation.mutate({
       slug,
       name: trimmedName,

@@ -18,11 +18,13 @@ import { API_BASE } from "@/lib/config";
 
 type AssistantProps = {
   ragSlug?: string;
+  suggestions?: string[];
 };
 
-export const Assistant = ({ ragSlug }: AssistantProps) => {
+export const Assistant = ({ ragSlug, suggestions }: AssistantProps) => {
   const { token } = useAuth();
   const [rags, setRags] = useState<string[]>(ragSlug ? [ragSlug] : []);
+  const [ragSuggestions, setRagSuggestions] = useState<Record<string, string[]>>({});
   const [selectedRag, setSelectedRag] = useState(
     ragSlug ?? (ragSlug ? "" : rags[0] ?? ""),
   );
@@ -42,6 +44,15 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
         const items = Array.isArray(data.items) ? data.items : [];
         const slugs = items.map((item: { slug: string }) => item.slug);
         setRags(slugs);
+        setRagSuggestions(
+          items.reduce(
+            (acc: Record<string, string[]>, item: { slug: string; suggestions?: string[] }) => {
+              acc[item.slug] = item.suggestions ?? [];
+              return acc;
+            },
+            {},
+          ),
+        );
         if (!selectedRag && slugs.length) {
           setSelectedRag(slugs[0]!);
         }
@@ -172,6 +183,12 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
   }, [formatWithCitations, selectedRag, token, locale, t]);
 
   const runtime = useLocalRuntime(chatAdapter);
+  const suggestionPrompts = useMemo(() => {
+    const fromProp = suggestions ?? [];
+    const fromList = selectedRag ? ragSuggestions[selectedRag] ?? [] : [];
+    const merged = fromProp.length ? fromProp : fromList;
+    return merged.map((prompt) => ({ prompt }));
+  }, [suggestions, ragSuggestions, selectedRag]);
   const showHeader = !ragSlug;
 
   return (
@@ -199,7 +216,10 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
           </header>
         ) : null}
         <div className="flex-1 overflow-hidden">
-          <Thread />
+          <Thread
+            suggestions={suggestionPrompts}
+            suggestionsPlacement="welcome"
+          />
         </div>
       </div>
     </AssistantRuntimeProvider>

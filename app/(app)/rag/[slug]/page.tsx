@@ -74,7 +74,7 @@ export default function RagDetailPage() {
         </Button>
       </div>
       <div className="flex-1 min-h-0">
-        <Assistant ragSlug={slug} />
+        <Assistant ragSlug={slug} suggestions={summary?.suggestions} />
       </div>
     </div>
   );

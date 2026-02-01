@@ -179,7 +179,10 @@ export default function PublicRagPage() {
                 </p>
               </div>
               <div className="flex-1">
-                <Thread />
+                <Thread
+                  suggestions={(summary?.suggestions ?? []).map((prompt) => ({ prompt }))}
+                  suggestionsPlacement="welcome"
+                />
               </div>
             </section>
           </div>

@@ -87,6 +87,7 @@ export const RagSummary = z.object({
   chunks: z.number().int().min(0),
   last_updated: ISODate,
   visibility: z.enum(["private", "public"]).default("private"),
+  suggestions: z.array(z.string()).default([]),
 });
 export type RagSummary = z.infer<typeof RagSummary>;
 
@@ -268,7 +269,7 @@ export type ChatResponse = z.infer<typeof ChatResponse>;
 /** ------------------ jobs / admin ------------------ */
 export const JobType = z.enum(["RAG_INDEX", "RAG_REBUILD", "RAG_RESET", "CHAT_COMPLETION"]);
 export const JobState = z.enum(["queued", "running", "done", "error"]);
-export const JobPhase = z.enum(["queued", "chunking", "embedding", "indexing", "finalizing"]);
+export const JobPhase = z.enum(["queued", "chunking", "embedding", "indexing", "suggestions", "finalizing"]);
 
 export const JobTotals = z.object({
   docs_total: z.number().int().min(0),
@@ -293,6 +294,7 @@ export const JobStatusResponse = z.object({
   result: z.record(z.any()).nullable().optional(),
   phase: JobPhase.nullable().optional(),
   totals: JobTotals.nullable().optional(),
+  suggestions_ready: z.boolean().optional(),
   error: z.string().nullable().optional(),
   corr_id: UUID,
 });
