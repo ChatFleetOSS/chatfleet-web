@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { listRags } from "@/lib/apiClient";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -11,7 +10,6 @@ import { ArrowRightIcon, ShieldIcon } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function DashboardPage() {
-  const router = useRouter();
   const { token, user } = useAuth();
   const t = useTranslation();
 

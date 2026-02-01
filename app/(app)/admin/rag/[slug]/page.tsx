@@ -312,7 +312,7 @@ export default function AdminRagDetailPage() {
             <p>{t("adminRag.docs.instructions")}</p>
             <Input
               type="file"
-              accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              accept=".pdf,.docx,.odt,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain"
               multiple
               onChange={(event) => setSelectedFiles(event.target.files)}
             />

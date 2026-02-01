@@ -144,16 +144,26 @@ export const Assistant = ({ ragSlug }: AssistantProps) => {
               break;
             }
             case "error":
-              throw new Error(
-                event.envelope.error?.message ?? "Chat stream error",
-              );
+              yield {
+                content: [
+                  {
+                    type: "text",
+                    text:
+                      event.envelope.error?.message ??
+                      t("assistant.error.noContext"),
+                  },
+                ],
+              };
+              accumulated = "";
+              citations = [];
+              break;
             default:
               break;
           }
         }
       },
     };
-  }, [formatWithCitations, selectedRag, token]);
+  }, [formatWithCitations, selectedRag, token, locale, t]);
 
   const runtime = useLocalRuntime(chatAdapter);
   const showHeader = !ragSlug;

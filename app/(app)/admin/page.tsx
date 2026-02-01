@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
         value: data.max_upload_mb ? `${data.max_upload_mb} MB` : "—",
       },
     ];
-  }, [configQuery.data, t]);
+  }, [configQuery.data, llmConfigQuery.data, t]);
 
   const userStats = useMemo(() => {
     const data = usersQuery.data;

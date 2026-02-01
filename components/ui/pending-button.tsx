@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -25,4 +25,3 @@ export function PendingButton({ isPending, pendingLabel, children, className, ..
     </Button>
   );
 }
-

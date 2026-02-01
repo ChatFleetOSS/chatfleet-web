@@ -18,7 +18,7 @@ export function NavButton({ href, pendingLabel, children, onClick, ...rest }: Pr
       isPending={isPending}
       pendingLabel={pendingLabel}
       onClick={(e) => {
-        onClick?.(e as any);
+        onClick?.(e);
         if (e.defaultPrevented) return;
         startTransition(() => router.push(href));
       }}
@@ -28,4 +28,3 @@ export function NavButton({ href, pendingLabel, children, onClick, ...rest }: Pr
     </PendingButton>
   );
 }
-

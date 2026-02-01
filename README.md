@@ -40,7 +40,7 @@ Sign in via `/login`. If the operator installed with `CREATE_ADMIN=1 ADMIN_EMAIL
 - Manual smoke checklist before every PR:
   1. `/login` → authenticate → redirected to `/`.
   2. `/rag/{slug}` → send prompt → observe SSE chunks, citations appended, corr_id + usage badge.
-  3. Admin (`/admin` & `/admin/rag/{slug}`) → upload stub PDF → confirm `job_id`, user invites, revoke access.
+3. Admin (`/admin` & `/admin/rag/{slug}`) → upload a stub doc (PDF/DOCX/ODT/TXT) → confirm `job_id`, user invites, revoke access.
   4. Refresh page → JWT rehydration via `/auth/me`.
 
 Known gaps / follow-ups:

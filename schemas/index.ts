@@ -125,6 +125,7 @@ export const RagDoc = z.object({
   mime: z.enum([
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.oasis.opendocument.text",
     "text/plain",
     "application/msword",
   ]),

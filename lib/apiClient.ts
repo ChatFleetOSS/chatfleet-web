@@ -39,10 +39,7 @@ import {
   UsersListResponse as UsersListSchema,
   RagUsersResponse as RagUsersSchema,
   LLMConfigResponse as LLMConfigResponseSchema,
-  LLMConfigUpdateRequest as LLMConfigUpdateRequestSchema,
-  LLMConfigTestRequest as LLMConfigTestRequestSchema,
   LLMConfigTestResult as LLMConfigTestResultSchema,
-  LLMModelsRequest as LLMModelsRequestSchema,
   LLMModelsResponse as LLMModelsResponseSchema,
   LLMEmbedTestResult as LLMEmbedTestResultSchema,
 } from "@/schemas";

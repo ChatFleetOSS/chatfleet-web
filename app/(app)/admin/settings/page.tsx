@@ -9,7 +9,7 @@ import { PendingButton } from "@/components/ui/pending-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "@/hooks/use-translation";
 import {
   adminGetLLMConfig,
@@ -320,8 +320,12 @@ export default function AdminSettingsPage() {
                         if (embedProvider === "openai" && res.embed_models?.length) {
                           setEmbedModel((prev) => prev || res.embed_models[0]);
                         }
-                      } catch (e: any) {
-                        setDiscoverError(e?.name === 'AbortError' ? 'Discovery timed out' : (e?.message || 'Discovery failed'));
+                      } catch (e: unknown) {
+                        const message =
+                          e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "AbortError"
+                            ? "Discovery timed out"
+                            : (e as { message?: string }).message || "Discovery failed";
+                        setDiscoverError(message);
                       } finally {
                         clearTimeout(timer);
                         setDiscovering(false);
@@ -448,8 +452,12 @@ export default function AdminSettingsPage() {
                             embed_provider: embedProvider,
                           }, { signal: ac.signal });
                           setEmbedTestResult(res.ok ? `${t("adminSettings.test.ok")} (${t("adminSettings.embeddingDim")}: ${res.dim ?? "?"})` : res.message || t("adminSettings.test.fail"));
-                        } catch (e: any) {
-                          setEmbedTestResult(e?.name === 'AbortError' ? 'TIMEOUT: provider did not respond' : (e?.message || 'Test failed'));
+                        } catch (e: unknown) {
+                          const message =
+                            e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "AbortError"
+                              ? "TIMEOUT: provider did not respond"
+                              : (e as { message?: string }).message || "Test failed";
+                          setEmbedTestResult(message);
                         } finally {
                           clearTimeout(timer);
                         }
@@ -484,7 +492,12 @@ export default function AdminSettingsPage() {
   );
 }
 
-function StatusChip({ cfg, t }: { cfg: any; t: ReturnType<typeof useTranslation> }) {
+type StatusCfg = {
+  has_api_key?: boolean;
+  verified_at?: string | null;
+};
+
+function StatusChip({ cfg, t }: { cfg: StatusCfg; t: ReturnType<typeof useTranslation> }) {
   const hasKey = !!cfg?.has_api_key;
   const verified = !!cfg?.verified_at;
   let label = t("adminSettings.status.notConfigured");
