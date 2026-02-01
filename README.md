@@ -52,4 +52,5 @@ Known gaps / follow-ups:
 
 ## Public RAGs
 - Admins can set a RAG visibility to **public** during creation. Public RAGs are visible on `/public` and can be chatted with anonymously via `/public/rag/{slug}`.
+- UI: public pages now reuse the same chat surface as private assistants; the documents/metadata panel is hidden to avoid exposing internal sources.
 - Public API surface (no auth): `GET /api/public/rag/list`, `GET /api/public/rag/docs?rag_slug=...`, `POST /api/public/chat`, `POST /api/public/chat/stream`.
