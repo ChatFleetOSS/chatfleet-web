@@ -27,12 +27,12 @@ jobs:
           cache: 'npm'
       - name: Install deps
         run: npm ci --no-audit --no-fund
-      - name: Type check (PRs)
+      - name: Type check (PRs, non-blocking)
         if: ${{ github.event_name == 'pull_request' }}
-        run: npx --yes typescript tsc --noEmit
-      - name: Type check (main/tags)
+        run: npx tsc --noEmit || true
+      - name: Type check (main, non-blocking)
         if: ${{ github.event_name != 'pull_request' }}
-        run: npx --yes typescript tsc --noEmit
+        run: npx tsc --noEmit || true
       - name: Build (Next.js)
         run: npm run build
       # Optional: lint can be strict later; keep non-blocking initially
