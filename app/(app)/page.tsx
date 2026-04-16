@@ -88,30 +88,41 @@ export default function DashboardPage() {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {items.map((rag) => (
-              <li key={rag.slug}>
-                <div className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="flex flex-col gap-1 text-left">
-                    <span className="text-sm font-medium text-foreground">
-                      {rag.name}
-                    </span>
-                    <p className="text-sm text-muted-foreground">
-                      {rag.description}
-                    </p>
+            {items.map((rag) => {
+              const isPublic = rag.visibility === "public";
+              const targetHref = isPublic ? `/public/rag/${rag.slug}` : `/rag/${rag.slug}`;
+              return (
+                <li key={rag.slug}>
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="flex flex-col gap-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {rag.name}
+                        </span>
+                        {isPublic ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.15em] text-emerald-700">
+                            Public
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {rag.description}
+                      </p>
+                    </div>
+                    <NavButton
+                      variant="outline"
+                      size="sm"
+                      href={targetHref}
+                      pendingLabel={t("common.opening")}
+                      className="flex items-center gap-2 bg-muted text-foreground hover:bg-muted/80"
+                    >
+                      <span>{t("dashboard.select")}</span>
+                      <ArrowRightIcon aria-hidden="true" className="size-4" />
+                    </NavButton>
                   </div>
-                  <NavButton
-                    variant="outline"
-                    size="sm"
-                    href={`/rag/${rag.slug}`}
-                    pendingLabel={t("common.opening")}
-                    className="flex items-center gap-2 bg-muted text-foreground hover:bg-muted/80"
-                  >
-                    <span>{t("dashboard.select")}</span>
-                    <ArrowRightIcon aria-hidden="true" className="size-4" />
-                  </NavButton>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

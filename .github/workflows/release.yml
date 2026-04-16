@@ -5,7 +5,7 @@ on:
     tags: [ 'v*.*.*' ]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
@@ -41,16 +41,32 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            NEXT_PUBLIC_API_BASE=/api
+            BUILD_VERSION=${{ github.ref_name }}
+            BUILD_COMMIT=${{ github.sha }}
           tags: |
             ${{ steps.meta.outputs.tags }}
             ghcr.io/chatfleetoss/chatfleet-web:latest
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NEXT_PUBLIC_API_BASE=/api
       - name: Install Cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
       - name: Cosign sign (keyless)
         env:
           COSIGN_EXPERIMENTAL: 1
         run: cosign sign --yes ${{ env.IMAGE_REF }}:${{ github.ref_name }}
-
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+      - name: Infra promotion reminder
+        run: |
+          {
+            echo "## Infra next step"
+            echo
+            echo "Once the matching backend release exists, run the \`Promote Channel\` workflow in \`chatfleet-infra\`."
+            echo
+            echo "- channel: \`stable\`"
+            echo "- api_tag: \`<matching api tag>\`"
+            echo "- web_tag: \`${{ github.ref_name }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -13,6 +13,7 @@ This Next.js (app router) frontend targets the ChatFleet API.
 - Install: `npm ci`
 - Dev: `npm run dev`
 - Build: `npm run build` (standalone output)
+- Full stack via Docker: `curl -fsSL https://raw.githubusercontent.com/ChatFleetOSS/chatfleet-api/main/install.sh | bash` (brings up Mongo + API + Web with defaults under `~/.chatfleet`).
 
 ## Config & Env
 - `next.config.ts` — ignores type/ESLint in CI builds to ease container builds.

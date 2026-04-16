@@ -2,6 +2,16 @@
 
 Minimalist Next.js 15 interface for the ChatFleet multi-RAG platform. This UI aligns with the v0.1.1 FastAPI backend, shared Zod schemas (`/schemas/index.ts`), and Pact contracts. It preserves the assistant-ui experience while enforcing typed API access, SSE streaming, and JWT auth.
 
+## Easiest install (Docker stack)
+
+Bring up MongoDB + API + Web together:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ChatFleetOSS/chatfleet-api/main/install.sh | bash
+```
+
+This writes `~/.chatfleet/compose.yaml` and `.env`, then runs `docker compose up -d` exposing Web on `http://localhost:3000` and API on `http://localhost:8000`. Adjust ports or tags in `~/.chatfleet/.env` and rerun the command.
+
 ## Quickstart
 
 ```bash

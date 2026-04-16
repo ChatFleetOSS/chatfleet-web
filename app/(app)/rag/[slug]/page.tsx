@@ -72,6 +72,16 @@ export default function RagDetailPage() {
           <ArrowLeftIcon aria-hidden="true" className="size-4" />
           <span>{t("common.backHome")}</span>
         </Button>
+        {summary.visibility === "public" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={() => router.push(`/public/rag/${slug}`)}
+          >
+            {t("dashboard.select")} (public)
+          </Button>
+        ) : null}
       </div>
       <div className="flex-1 min-h-0">
         <Assistant ragSlug={slug} suggestions={summary?.suggestions} />

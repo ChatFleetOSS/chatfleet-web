@@ -68,6 +68,14 @@ export default function AdminRagDetailPage() {
 
   const ragSummary = ragListQuery.data?.items.find((item) => item.slug === slug);
   const canManage = Boolean(ragSummary);
+  const isPublic = ragSummary?.visibility === "public";
+  const publicUrl = useMemo(() => {
+    if (!slug) return "";
+    if (typeof window === "undefined") {
+      return `/public/rag/${slug}`;
+    }
+    return `${window.location.origin}/public/rag/${slug}`;
+  }, [slug]);
 
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -306,6 +314,40 @@ export default function AdminRagDetailPage() {
           )}
         </div>
       </AdminSection>
+      {isPublic ? (
+        <AdminSection
+          title="Public access"
+          description="Anyone can chat without signing in. Share or open the public link below."
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">
+              {publicUrl || "—"}
+            </code>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/public/rag/${slug}`} target="_blank" rel="noreferrer">
+                  Open public page
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    if (publicUrl) {
+                      await navigator.clipboard.writeText(publicUrl);
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Copy link
+              </Button>
+            </div>
+          </div>
+        </AdminSection>
+      ) : null}
       <AdminSection
         title={t("adminRag.docs.title")}
         description={t("adminRag.sections.documentsDescription")}

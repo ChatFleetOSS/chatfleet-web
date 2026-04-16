@@ -33,9 +33,13 @@ export const SSE_HEARTBEAT_MS = Number(
 );
 
 export const AUTH_STORAGE_KEY = "chatfleet.auth.token";
+export const BUILD_VERSION =
+  process.env.NEXT_PUBLIC_CHATFLEET_BUILD_VERSION ?? "dev";
+export const BUILD_COMMIT =
+  process.env.NEXT_PUBLIC_CHATFLEET_BUILD_COMMIT ?? "local";
 
 export const AGENT_META = {
   id: "frontend.chatfleet.integrator",
-  version: "v0.1.1",
+  version: BUILD_VERSION,
   mode: "incremental",
 } as const;

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 
+const buildVersion = process.env.NEXT_PUBLIC_CHATFLEET_BUILD_VERSION ?? "dev";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -16,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ChatFleet Frontend",
   description:
-    "ChatFleet — multi-RAG chatbot platform for SMEs (frontend v0.1.1)",
+    `ChatFleet — multi-RAG chatbot platform for SMEs (frontend ${buildVersion})`,
 };
 
 export default function RootLayout({

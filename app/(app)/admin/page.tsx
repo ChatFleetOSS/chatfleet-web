@@ -249,25 +249,44 @@ export default function AdminDashboardPage() {
             {ragQuery.isLoading ? (
               <p className="py-3">{t("admin.ragSection.loading")}</p>
             ) : ragQuery.data?.items.length ? (
-              ragQuery.data.items.map((rag) => (
-                <div
-                  key={rag.slug}
-                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{rag.name}</p>
-                    <p>{rag.description}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="self-start bg-muted text-foreground hover:bg-muted/80 sm:self-auto"
-                    asChild
+              ragQuery.data.items.map((rag) => {
+                const isPublic = rag.visibility === "public";
+                return (
+                  <div
+                    key={rag.slug}
+                    className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <Link href={`/admin/rag/${rag.slug}`}>{t("admin.manage")}</Link>
-                  </Button>
-                </div>
-              ))
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">{rag.name}</p>
+                        {isPublic ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.15em] text-emerald-700">
+                            Public
+                          </span>
+                        ) : null}
+                      </div>
+                      <p>{rag.description}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {isPublic ? (
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/public/rag/${rag.slug}`} target="_blank" rel="noreferrer">
+                            Public page
+                          </Link>
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="self-start bg-muted text-foreground hover:bg-muted/80 sm:self-auto"
+                        asChild
+                      >
+                        <Link href={`/admin/rag/${rag.slug}`}>{t("admin.manage")}</Link>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
             ) : (
               <p className="py-3">{t("admin.ragSection.empty")}</p>
             )}
