@@ -26,7 +26,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         <LanguageProvider>{children}</LanguageProvider>
       </AuthProvider>
       {process.env.NODE_ENV === "development" ? (
-        <ReactQueryDevtools position="bottom-right" />
+        <ReactQueryDevtools buttonPosition="bottom-right" />
       ) : null}
     </QueryClientProvider>
   );

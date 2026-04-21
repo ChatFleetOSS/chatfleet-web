@@ -497,7 +497,7 @@ type StatusCfg = {
   verified_at?: string | null;
 };
 
-function StatusChip({ cfg, t }: { cfg: StatusCfg; t: ReturnType<typeof useTranslation> }) {
+function StatusChip({ cfg, t }: { cfg?: StatusCfg | null; t: ReturnType<typeof useTranslation> }) {
   const hasKey = !!cfg?.has_api_key;
   const verified = !!cfg?.verified_at;
   let label = t("adminSettings.status.notConfigured");

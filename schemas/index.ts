@@ -291,7 +291,7 @@ export const JobStatusResponse = z.object({
   progress: z.number().min(0).max(1),
   started_at: ISODate.nullable().optional(),
   finished_at: ISODate.nullable().optional(),
-  result: z.record(z.any()).nullable().optional(),
+  result: z.record(z.string(), z.any()).nullable().optional(),
   phase: JobPhase.nullable().optional(),
   totals: JobTotals.nullable().optional(),
   suggestions_ready: z.boolean().optional(),

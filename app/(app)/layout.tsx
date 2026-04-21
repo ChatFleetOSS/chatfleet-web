@@ -36,7 +36,6 @@ export default function ApplicationLayout({ children }: PropsWithChildren) {
         <UserMenu
           name={user?.name ?? "User"}
           role={user?.role ?? "user"}
-          avatarUrl={user?.avatarUrl}
           isAdmin={user?.role === "admin"}
           onAdmin={() => router.push("/admin")}
           onProfile={() => router.push("/settings/profile")}
