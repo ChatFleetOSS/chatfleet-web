@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createRag, uploadRagDocs } from "@/lib/apiClient";
+import { createRag, getJob, uploadRagDocs } from "@/lib/apiClient";
 import { ApiError } from "@/lib/errors";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,9 @@ function slugify(value: string) {
     .replace(/-+$/, "")
     .replace(/--+/g, "-");
 }
+
+const ACCEPTED_DOCUMENT_TYPES =
+  ".pdf,.docx,.txt,.odt,.ods,.odp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/vnd.oasis.opendocument.presentation";
 
 export default function AdminRagCreatePage() {
   const { token, user } = useAuth();
@@ -123,11 +126,7 @@ export default function AdminRagCreatePage() {
     const id = setInterval(async () => {
       try {
         if (!token || !jobId) return;
-        const res = await fetch(`/backend-api/jobs/${jobId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const json = await res.json();
+        const json = await getJob(token, jobId);
         const status = json.status as typeof jobStatus;
         const progress = typeof json.progress === "number" ? json.progress : null;
         const totals =
@@ -272,7 +271,7 @@ export default function AdminRagCreatePage() {
               <div className="space-y-3 text-sm text-muted-foreground">
                 <Input
                   type="file"
-                  accept=".pdf,.docx,.odt,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain"
+                  accept={ACCEPTED_DOCUMENT_TYPES}
                   multiple
                   onChange={(event) => setSelectedFiles(event.target.files)}
                   disabled={createMutation.isPending || dialogOpen}

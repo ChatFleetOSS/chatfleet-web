@@ -39,6 +39,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+const ACCEPTED_DOCUMENT_TYPES =
+  ".pdf,.docx,.txt,.odt,.ods,.odp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/vnd.oasis.opendocument.presentation";
+
 export default function AdminRagDetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -361,7 +364,7 @@ export default function AdminRagDetailPage() {
             <p>{t("adminRag.docs.instructions")}</p>
             <Input
               type="file"
-              accept=".pdf,.docx,.odt,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain"
+              accept={ACCEPTED_DOCUMENT_TYPES}
               multiple
               onChange={(event) => setSelectedFiles(event.target.files)}
             />
