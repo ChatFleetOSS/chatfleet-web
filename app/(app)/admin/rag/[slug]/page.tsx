@@ -3,6 +3,8 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,26 +16,34 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ArrowLeftIcon,
+  CheckCircle2Icon,
   UploadIcon,
   RefreshCwIcon,
   Undo2Icon,
   UserPlusIcon,
   Trash2Icon,
+  SaveIcon,
 } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 import { useLanguage } from "@/components/providers/language-provider";
 import { AdminSection } from "@/components/admin/admin-section";
 import {
   addRagUser,
+  getAdminRag,
   getRagDocs,
   listAdminRags,
   listRagUsers,
   rebuildRag,
   removeRagUser,
   resetRag,
+  updateAdminRag,
   uploadRagDocs,
   deleteRag,
 } from "@/lib/apiClient";
+import {
+  DEFAULT_RAG_SYSTEM_PROMPT,
+  RAG_SYSTEM_PROMPT_MAX_LENGTH,
+} from "@/schemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -69,7 +79,9 @@ export default function AdminRagDetailPage() {
     enabled: Boolean(token) && user?.role === "admin",
   });
 
-  const ragSummary = ragListQuery.data?.items.find((item) => item.slug === slug);
+  const ragSummary = ragListQuery.data?.items.find(
+    (item) => item.slug === slug,
+  );
   const canManage = Boolean(ragSummary);
   const isPublic = ragSummary?.visibility === "public";
   const publicUrl = useMemo(() => {
@@ -89,11 +101,17 @@ export default function AdminRagDetailPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
   const [deleteInFlight, setDeleteInFlight] = useState(false);
+  const [systemPromptDraft, setSystemPromptDraft] = useState("");
+  const [systemPromptSavedMessage, setSystemPromptSavedMessage] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setDeleteConfirm("");
     setDeleteError(null);
     setDeleteSuccessOpen(false);
+    setSystemPromptDraft("");
+    setSystemPromptSavedMessage(null);
   }, [slug]);
 
   const docsQuery = useQuery({
@@ -102,8 +120,19 @@ export default function AdminRagDetailPage() {
       if (!token) throw new Error("Missing token");
       return getRagDocs(token, slug);
     },
-    enabled: Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
+    enabled:
+      Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
     refetchInterval: 10_000,
+  });
+
+  const ragDetailQuery = useQuery({
+    queryKey: ["admin-rag", slug],
+    queryFn: () => {
+      if (!token) throw new Error("Missing token");
+      return getAdminRag(token, slug);
+    },
+    enabled:
+      Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
   });
 
   const usersQuery = useQuery({
@@ -112,7 +141,8 @@ export default function AdminRagDetailPage() {
       if (!token) throw new Error("Missing token");
       return listRagUsers(token, slug);
     },
-    enabled: Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
+    enabled:
+      Boolean(token) && user?.role === "admin" && canManage && !deleteInFlight,
   });
 
   const uploadMutation = useMutation({
@@ -195,7 +225,9 @@ export default function AdminRagDetailPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-rags"] }),
-        queryClient.invalidateQueries({ queryKey: ["rag-docs", slug, "admin"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["rag-docs", slug, "admin"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["rag-users", slug] }),
       ]);
       setDeleteConfirm("");
@@ -211,8 +243,48 @@ export default function AdminRagDetailPage() {
     },
   });
 
+  const promptMutation = useMutation({
+    mutationFn: async () => {
+      if (!canManage) {
+        throw new Error(t("adminRag.errors.metadataUnavailable"));
+      }
+      if (!token) throw new Error("Missing token");
+      return updateAdminRag(token, {
+        rag_slug: slug,
+        system_prompt: systemPromptDraft,
+      });
+    },
+    onSuccess: async (data) => {
+      queryClient.setQueryData(["admin-rag", slug], data);
+      setSystemPromptDraft(data.rag.system_prompt);
+      setSystemPromptSavedMessage(t("adminRag.prompt.saved"));
+      await queryClient.invalidateQueries({ queryKey: ["admin-rags"] });
+    },
+    onError: () => {
+      setSystemPromptSavedMessage(null);
+    },
+  });
+
+  const currentSystemPrompt =
+    ragDetailQuery.data?.rag.system_prompt ?? DEFAULT_RAG_SYSTEM_PROMPT;
+  const promptTooLong = systemPromptDraft.length > RAG_SYSTEM_PROMPT_MAX_LENGTH;
+  const promptDirty = systemPromptDraft !== currentSystemPrompt;
+  const promptSaved = Boolean(systemPromptSavedMessage) && !promptDirty;
+
+  useEffect(() => {
+    if (ragDetailQuery.data?.rag.system_prompt !== undefined) {
+      setSystemPromptDraft(ragDetailQuery.data.rag.system_prompt);
+    }
+  }, [ragDetailQuery.data?.rag.system_prompt, slug]);
+
   const metadataItems = useMemo(() => {
-    if (!ragSummary) return [] as Array<{ label: string; value: string | number; full?: boolean; monospace?: boolean }>;
+    if (!ragSummary)
+      return [] as Array<{
+        label: string;
+        value: string | number;
+        full?: boolean;
+        monospace?: boolean;
+      }>;
     return [
       { label: t("adminRag.metadata.slug"), value: ragSummary.slug },
       { label: t("adminRag.metadata.name"), value: ragSummary.name },
@@ -261,406 +333,535 @@ export default function AdminRagDetailPage() {
       </div>
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
-      <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          {t("adminRag.manageHeading")}
-        </p>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {ragSummary?.name ?? slug}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {t("adminRag.subtitle")}
-        </p>
-      </header>
+        <header className="space-y-2">
+          <p className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
+            {t("adminRag.manageHeading")}
+          </p>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {ragSummary?.name ?? slug}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("adminRag.subtitle")}
+          </p>
+        </header>
 
-      <AdminSection
-        title={t("adminRag.metadata.title")}
-        description={t("adminRag.sections.metadataDescription")}
-        defaultOpen
-      >
-        <div className="space-y-3 text-sm text-muted-foreground">
-          {ragListQuery.isLoading ? (
-            <p>{t("adminRag.metadata.loading")}</p>
-          ) : ragSummary ? (
-            <dl className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-              {metadataItems.map((item) => (
-                <div
-                  key={item.label}
-                  className={cn(
-                    "rounded-lg border border-border bg-muted/30 px-3 py-2",
-                    item.full && "sm:col-span-2",
-                  )}
-                >
-                  <dt className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    {item.label}
-                  </dt>
-                  <dd
+        <AdminSection
+          title={t("adminRag.metadata.title")}
+          description={t("adminRag.sections.metadataDescription")}
+          defaultOpen
+        >
+          <div className="space-y-3 text-sm text-muted-foreground">
+            {ragListQuery.isLoading ? (
+              <p>{t("adminRag.metadata.loading")}</p>
+            ) : ragSummary ? (
+              <dl className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                {metadataItems.map((item) => (
+                  <div
+                    key={item.label}
                     className={cn(
-                      "mt-1 text-sm font-medium text-foreground break-words",
-                      item.full && "text-pretty",
+                      "rounded-lg border border-border bg-muted/30 px-3 py-2",
+                      item.full && "sm:col-span-2",
                     )}
                   >
-                    {item.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+                    <dt className="text-xs tracking-[0.25em] text-muted-foreground uppercase">
+                      {item.label}
+                    </dt>
+                    <dd
+                      className={cn(
+                        "mt-1 text-sm font-medium break-words text-foreground",
+                        item.full && "text-pretty",
+                      )}
+                    >
+                      {item.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-destructive">
+                  {t("adminRag.metadata.description")}
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/admin">{t("adminRag.metadata.return")}</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </AdminSection>
+        <AdminSection
+          title={t("adminRag.prompt.title")}
+          description={t("adminRag.prompt.description")}
+          defaultOpen
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.docs.unavailable")}
+            </p>
+          ) : ragDetailQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.prompt.loading")}
+            </p>
           ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-destructive">
-                {t("adminRag.metadata.description")}
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <div className="flex flex-col gap-2 text-foreground">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <label
+                    className="text-xs tracking-[0.3em] text-muted-foreground uppercase"
+                    htmlFor="rag-system-prompt"
+                  >
+                    {t("adminRag.prompt.label")}
+                  </label>
+                  <span
+                    id="rag-system-prompt-count"
+                    className={cn(
+                      "text-xs text-muted-foreground",
+                      promptTooLong && "text-destructive",
+                    )}
+                  >
+                    {systemPromptDraft.length} / {RAG_SYSTEM_PROMPT_MAX_LENGTH}
+                  </span>
+                </div>
+                <Textarea
+                  id="rag-system-prompt"
+                  value={systemPromptDraft}
+                  onChange={(event) => {
+                    setSystemPromptDraft(event.target.value);
+                    setSystemPromptSavedMessage(null);
+                  }}
+                  placeholder={DEFAULT_RAG_SYSTEM_PROMPT}
+                  maxLength={RAG_SYSTEM_PROMPT_MAX_LENGTH}
+                  aria-invalid={promptTooLong}
+                  aria-describedby="rag-system-prompt-help rag-system-prompt-count rag-system-prompt-status"
+                  disabled={promptMutation.isPending}
+                  className="min-h-56 resize-y font-mono text-xs leading-5 text-foreground md:text-xs"
+                />
+                <p
+                  id="rag-system-prompt-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  {t("adminRag.prompt.help")}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  id="rag-system-prompt-status"
+                  aria-live="polite"
+                  className="min-h-9"
+                >
+                  {promptMutation.isError ? (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {(promptMutation.error as Error).message}
+                    </div>
+                  ) : promptSaved ? (
+                    <div className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                      <CheckCircle2Icon aria-hidden="true" className="size-4" />
+                      <span>{systemPromptSavedMessage}</span>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSystemPromptDraft(DEFAULT_RAG_SYSTEM_PROMPT);
+                      setSystemPromptSavedMessage(null);
+                    }}
+                    disabled={
+                      promptMutation.isPending ||
+                      systemPromptDraft === DEFAULT_RAG_SYSTEM_PROMPT
+                    }
+                  >
+                    {t("adminRag.prompt.reset")}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => promptMutation.mutate()}
+                    disabled={
+                      promptMutation.isPending || !promptDirty || promptTooLong
+                    }
+                    className={cn(
+                      "flex items-center gap-2",
+                      promptSaved &&
+                        "border border-emerald-200 bg-emerald-600 text-white opacity-100 disabled:opacity-100",
+                    )}
+                  >
+                    {promptMutation.isPending ? (
+                      <Spinner
+                        aria-hidden="true"
+                        size="xs"
+                        className="text-primary-foreground"
+                      />
+                    ) : promptSaved ? (
+                      <CheckCircle2Icon aria-hidden="true" className="size-4" />
+                    ) : (
+                      <SaveIcon aria-hidden="true" className="size-4" />
+                    )}
+                    <span>
+                      {promptMutation.isPending
+                        ? t("common.saving")
+                        : promptSaved
+                          ? t("adminRag.prompt.savedButton")
+                          : t("adminRag.prompt.save")}
+                    </span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </AdminSection>
+        {isPublic ? (
+          <AdminSection
+            title="Public access"
+            description="Anyone can chat without signing in. Share or open the public link below."
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">
+                {publicUrl || "—"}
+              </code>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={`/public/rag/${slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open public page
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      if (publicUrl) {
+                        await navigator.clipboard.writeText(publicUrl);
+                      }
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  Copy link
+                </Button>
+              </div>
+            </div>
+          </AdminSection>
+        ) : null}
+        <AdminSection
+          title={t("adminRag.docs.title")}
+          description={t("adminRag.sections.documentsDescription")}
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.docs.unavailable")}
+            </p>
+          ) : (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>{t("adminRag.docs.instructions")}</p>
+              <Input
+                type="file"
+                accept={ACCEPTED_DOCUMENT_TYPES}
+                multiple
+                onChange={(event) => setSelectedFiles(event.target.files)}
+              />
+              <Button
+                onClick={() => uploadMutation.mutate()}
+                disabled={!selectedFiles || uploadMutation.isPending}
+                className="flex items-center gap-2"
+              >
+                <UploadIcon aria-hidden="true" className="size-4" />
+                <span>
+                  {uploadMutation.isPending
+                    ? t("common.uploading")
+                    : t("common.uploadAndIndex")}
+                </span>
+              </Button>
+              {uploadMutation.isError ? (
+                <p className="text-xs text-destructive">
+                  {(uploadMutation.error as Error).message}
+                </p>
+              ) : null}
+              {uploadJobId ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("adminRag.docs.latestJob", { id: uploadJobId })}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </AdminSection>
+
+        <AdminSection
+          title={t("adminRag.index.title")}
+          description={t("adminRag.sections.indexDescription")}
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.index.unavailable")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+              <Button
+                variant="outline"
+                onClick={() => rebuildMutation.mutate()}
+                disabled={rebuildMutation.isPending}
+                className="flex items-center gap-2"
+              >
+                <RefreshCwIcon aria-hidden="true" className="size-4" />
+                <span>
+                  {rebuildMutation.isPending
+                    ? t("common.rebuilding")
+                    : t("common.rebuildIndex")}
+                </span>
+              </Button>
+              {rebuildJobId ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("adminRag.index.latestRebuild", { id: rebuildJobId })}
+                </p>
+              ) : null}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (window.confirm(t("common.resetConfirm"))) {
+                    resetMutation.mutate();
+                  }
+                }}
+                disabled={resetMutation.isPending}
+                className="flex items-center gap-2 text-destructive hover:text-destructive"
+              >
+                <Undo2Icon aria-hidden="true" className="size-4" />
+                <span>
+                  {resetMutation.isPending
+                    ? t("common.resetting")
+                    : t("common.resetIndex")}
+                </span>
+              </Button>
+              {resetJobId ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("adminRag.index.latestReset", { id: resetJobId })}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </AdminSection>
+
+        <AdminSection
+          title={t("adminRag.users.title")}
+          description={t("adminRag.sections.usersDescription")}
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.users.unavailable")}
+            </p>
+          ) : (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex flex-col gap-2 md:flex-row">
+                <Input
+                  type="email"
+                  placeholder={t("adminRag.users.placeholder")}
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  className="md:max-w-xs"
+                />
+                <Button
+                  onClick={() => inviteMutation.mutate()}
+                  disabled={!inviteEmail}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlusIcon aria-hidden="true" className="size-4" />
+                  <span>{t("common.inviteUser")}</span>
+                </Button>
+              </div>
+              {inviteMutation.isError ? (
+                <p className="text-xs text-destructive">
+                  {(inviteMutation.error as Error).message}
+                </p>
+              ) : null}
+              <ul className="space-y-2">
+                {usersQuery.data?.users.map((entry) => (
+                  <li
+                    key={entry._id}
+                    className="flex items-center justify-between rounded border border-border px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm text-foreground">{entry.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.role} · {entry.name}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => revokeMutation.mutate(entry._id)}
+                      className="flex items-center gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2Icon aria-hidden="true" className="size-4" />
+                      <span>{t("common.remove")}</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              {usersQuery.data && usersQuery.data.users.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("adminRag.users.empty")}
+                </p>
+              ) : null}
+              {revokeMutation.isError ? (
+                <p className="text-xs text-destructive">
+                  {(revokeMutation.error as Error).message}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </AdminSection>
+
+        <AdminSection
+          title={
+            canManage
+              ? t("adminRag.docs.count", {
+                  count: docsQuery.data?.docs.length ?? 0,
+                })
+              : t("common.documents")
+          }
+          description={t("adminRag.sections.catalogDescription")}
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.docs.unavailable")}
+            </p>
+          ) : docsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">
+              {t("common.loading")}
+            </p>
+          ) : (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-border text-sm text-muted-foreground">
+                  <thead className="bg-muted text-xs tracking-[0.3em] text-muted-foreground uppercase">
+                    <tr>
+                      <th className="px-4 py-2 text-left">
+                        {t("adminRag.docs.filename")}
+                      </th>
+                      <th className="px-4 py-2 text-left">
+                        {t("common.status")}
+                      </th>
+                      <th className="px-4 py-2 text-left">
+                        {t("common.chunks")}
+                      </th>
+                      <th className="px-4 py-2 text-left">
+                        {t("common.lastUpdated")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {docsQuery.data?.docs.map((doc) => (
+                      <tr key={doc.doc_id}>
+                        <td className="px-4 py-2">{doc.filename}</td>
+                        <td className="px-4 py-2">{doc.status}</td>
+                        <td className="px-4 py-2">{doc.chunk_count}</td>
+                        <td className="px-4 py-2">
+                          {doc.indexed_at
+                            ? new Date(doc.indexed_at).toLocaleString(locale)
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {docsQuery.data?.docs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("adminRag.docs.empty")}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </AdminSection>
+
+        <AdminSection
+          title={t("adminRag.delete.title")}
+          description={t("adminRag.delete.description")}
+        >
+          {!canManage ? (
+            <p className="text-sm text-muted-foreground">
+              {t("adminRag.docs.unavailable")}
+            </p>
+          ) : (
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <p className="text-sm text-destructive">
+                {t("adminRag.delete.helper", { slug: confirmationTarget })}
               </p>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/admin">{t("adminRag.metadata.return")}</Link>
+              <div className="flex flex-col gap-2 sm:max-w-sm">
+                <label className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
+                  {t("adminRag.delete.confirmLabel")}
+                </label>
+                <Input
+                  value={deleteConfirm}
+                  onChange={(event) => {
+                    setDeleteConfirm(event.target.value);
+                    setDeleteError(null);
+                  }}
+                  placeholder={confirmationTarget}
+                  className="text-foreground"
+                />
+              </div>
+              {deleteError ? (
+                <p className="text-xs text-destructive">{deleteError}</p>
+              ) : null}
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={
+                  deleteConfirm !== confirmationTarget ||
+                  deleteMutation.isPending ||
+                  deleteInFlight
+                }
+                className="w-full sm:w-auto"
+              >
+                {deleteMutation.isPending || deleteInFlight
+                  ? t("adminRag.delete.buttonPending", {
+                      defaultValue: "Deleting RAG in progress…",
+                    })
+                  : t("adminRag.delete.button")}
               </Button>
             </div>
           )}
-        </div>
-      </AdminSection>
-      {isPublic ? (
-        <AdminSection
-          title="Public access"
-          description="Anyone can chat without signing in. Share or open the public link below."
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">
-              {publicUrl || "—"}
-            </code>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/public/rag/${slug}`} target="_blank" rel="noreferrer">
-                  Open public page
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    if (publicUrl) {
-                      await navigator.clipboard.writeText(publicUrl);
-                    }
-                  } catch {
-                    // ignore
-                  }
-                }}
-              >
-                Copy link
-              </Button>
-            </div>
-          </div>
         </AdminSection>
-      ) : null}
-      <AdminSection
-        title={t("adminRag.docs.title")}
-        description={t("adminRag.sections.documentsDescription")}
-      >
-        {!canManage ? (
-          <p className="text-sm text-muted-foreground">
-            {t("adminRag.docs.unavailable")}
-          </p>
-        ) : (
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>{t("adminRag.docs.instructions")}</p>
-            <Input
-              type="file"
-              accept={ACCEPTED_DOCUMENT_TYPES}
-              multiple
-              onChange={(event) => setSelectedFiles(event.target.files)}
-            />
-            <Button
-              onClick={() => uploadMutation.mutate()}
-              disabled={!selectedFiles || uploadMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              <UploadIcon aria-hidden="true" className="size-4" />
-              <span>
-                {uploadMutation.isPending
-                  ? t("common.uploading")
-                  : t("common.uploadAndIndex")}
-              </span>
-            </Button>
-            {uploadMutation.isError ? (
-              <p className="text-xs text-destructive">
-                {(uploadMutation.error as Error).message}
-              </p>
-            ) : null}
-            {uploadJobId ? (
-              <p className="text-xs text-muted-foreground">
-                {t("adminRag.docs.latestJob", { id: uploadJobId })}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </AdminSection>
 
-      <AdminSection
-        title={t("adminRag.index.title")}
-        description={t("adminRag.sections.indexDescription")}
-      >
-        {!canManage ? (
-          <p className="text-sm text-muted-foreground">
-            {t("adminRag.index.unavailable")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-            <Button
-              variant="outline"
-              onClick={() => rebuildMutation.mutate()}
-              disabled={rebuildMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              <RefreshCwIcon aria-hidden="true" className="size-4" />
-              <span>
-                {rebuildMutation.isPending
-                  ? t("common.rebuilding")
-                  : t("common.rebuildIndex")}
-              </span>
-            </Button>
-            {rebuildJobId ? (
-              <p className="text-xs text-muted-foreground">
-                {t("adminRag.index.latestRebuild", { id: rebuildJobId })}
-              </p>
-            ) : null}
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (
-                  window.confirm(t("common.resetConfirm"))
-                ) {
-                  resetMutation.mutate();
-                }
-              }}
-              disabled={resetMutation.isPending}
-              className="flex items-center gap-2 text-destructive hover:text-destructive"
-            >
-              <Undo2Icon aria-hidden="true" className="size-4" />
-              <span>
-                {resetMutation.isPending
-                  ? t("common.resetting")
-                  : t("common.resetIndex")}
-              </span>
-            </Button>
-            {resetJobId ? (
-              <p className="text-xs text-muted-foreground">
-                {t("adminRag.index.latestReset", { id: resetJobId })}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </AdminSection>
-
-      <AdminSection
-        title={t("adminRag.users.title")}
-        description={t("adminRag.sections.usersDescription")}
-      >
-        {!canManage ? (
-          <p className="text-sm text-muted-foreground">
-            {t("adminRag.users.unavailable")}
-          </p>
-        ) : (
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <div className="flex flex-col gap-2 md:flex-row">
-              <Input
-                type="email"
-                placeholder={t("adminRag.users.placeholder")}
-                value={inviteEmail}
-                onChange={(event) => setInviteEmail(event.target.value)}
-                className="md:max-w-xs"
-              />
+        <Dialog
+          open={deleteSuccessOpen}
+          onOpenChange={(open) => {
+            setDeleteSuccessOpen(open);
+            if (!open) {
+              router.replace("/admin");
+            }
+          }}
+        >
+          <DialogContent className="w-full max-w-lg">
+            <DialogHeader className="space-y-2 text-center">
+              <DialogTitle className="text-2xl font-semibold">
+                {t("adminRag.delete.successTitle")}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {t("adminRag.delete.successBody")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
               <Button
-                onClick={() => inviteMutation.mutate()}
-                disabled={!inviteEmail}
-                className="flex items-center gap-2"
-              >
-                <UserPlusIcon aria-hidden="true" className="size-4" />
-                <span>{t("common.inviteUser")}</span>
-              </Button>
-            </div>
-            {inviteMutation.isError ? (
-              <p className="text-xs text-destructive">
-                {(inviteMutation.error as Error).message}
-              </p>
-            ) : null}
-            <ul className="space-y-2">
-              {usersQuery.data?.users.map((entry) => (
-                <li
-                  key={entry._id}
-                  className="flex items-center justify-between rounded border border-border px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm text-foreground">{entry.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.role} · {entry.name}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => revokeMutation.mutate(entry._id)}
-                    className="flex items-center gap-2 text-destructive hover:text-destructive"
-                  >
-                    <Trash2Icon aria-hidden="true" className="size-4" />
-                    <span>{t("common.remove")}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-            {usersQuery.data && usersQuery.data.users.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {t("adminRag.users.empty")}
-              </p>
-            ) : null}
-            {revokeMutation.isError ? (
-              <p className="text-xs text-destructive">
-                {(revokeMutation.error as Error).message}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </AdminSection>
-
-      <AdminSection
-        title={
-          canManage
-            ? t("adminRag.docs.count", {
-                count: docsQuery.data?.docs.length ?? 0,
-              })
-            : t("common.documents")
-        }
-        description={t("adminRag.sections.catalogDescription")}
-      >
-        {!canManage ? (
-          <p className="text-sm text-muted-foreground">
-            {t("adminRag.docs.unavailable")}
-          </p>
-        ) : docsQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
-        ) : (
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border text-sm text-muted-foreground">
-                <thead className="bg-muted text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2 text-left">
-                      {t("adminRag.docs.filename")}
-                    </th>
-                    <th className="px-4 py-2 text-left">{t("common.status")}</th>
-                    <th className="px-4 py-2 text-left">{t("common.chunks")}</th>
-                    <th className="px-4 py-2 text-left">
-                      {t("common.lastUpdated")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {docsQuery.data?.docs.map((doc) => (
-                    <tr key={doc.doc_id}>
-                      <td className="px-4 py-2">{doc.filename}</td>
-                      <td className="px-4 py-2">{doc.status}</td>
-                      <td className="px-4 py-2">{doc.chunk_count}</td>
-                      <td className="px-4 py-2">
-                        {doc.indexed_at
-                          ? new Date(doc.indexed_at).toLocaleString(locale)
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {docsQuery.data?.docs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("adminRag.docs.empty")}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </AdminSection>
-
-      <AdminSection
-        title={t("adminRag.delete.title")}
-        description={t("adminRag.delete.description")}
-      >
-        {!canManage ? (
-          <p className="text-sm text-muted-foreground">
-            {t("adminRag.docs.unavailable")}
-          </p>
-        ) : (
-          <div className="space-y-4 text-sm text-muted-foreground">
-            <p className="text-sm text-destructive">
-              {t("adminRag.delete.helper", { slug: confirmationTarget })}
-            </p>
-            <div className="flex flex-col gap-2 sm:max-w-sm">
-              <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                {t("adminRag.delete.confirmLabel")}
-              </label>
-              <Input
-                value={deleteConfirm}
-                onChange={(event) => {
-                  setDeleteConfirm(event.target.value);
-                  setDeleteError(null);
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  setDeleteSuccessOpen(false);
+                  router.replace("/admin");
                 }}
-                placeholder={confirmationTarget}
-                className="text-foreground"
-              />
-            </div>
-            {deleteError ? (
-              <p className="text-xs text-destructive">{deleteError}</p>
-            ) : null}
-            <Button
-              variant="destructive"
-              onClick={() => deleteMutation.mutate()}
-              disabled={
-                deleteConfirm !== confirmationTarget ||
-                deleteMutation.isPending ||
-                deleteInFlight
-              }
-              className="w-full sm:w-auto"
-            >
-              {deleteMutation.isPending || deleteInFlight
-                ? t("adminRag.delete.buttonPending", {
-                    defaultValue: "Deleting RAG in progress…",
-                  })
-                : t("adminRag.delete.button")}
-            </Button>
-          </div>
-        )}
-      </AdminSection>
-
-      <Dialog
-        open={deleteSuccessOpen}
-        onOpenChange={(open) => {
-          setDeleteSuccessOpen(open);
-          if (!open) {
-            router.replace("/admin");
-          }
-        }}
-      >
-        <DialogContent className="w-full max-w-lg">
-          <DialogHeader className="space-y-2 text-center">
-            <DialogTitle className="text-2xl font-semibold">
-              {t("adminRag.delete.successTitle")}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {t("adminRag.delete.successBody")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                setDeleteSuccessOpen(false);
-                router.replace("/admin");
-              }}
-            >
-              {t("adminRag.delete.successCta")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-    </div>
+              >
+                {t("adminRag.delete.successCta")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
