@@ -6,10 +6,13 @@ import { request } from "@/lib/http";
 import type {
   AdminCreateUserRequest,
   AdminConfigResponse,
+  RagAdminDetailResponse,
   RagCreateRequest,
   RagCreateResponse,
   AuthResponse,
   RagDeleteResponse,
+  RagUpdateRequest,
+  RagUpdateResponse,
   ChatRequest,
   ChatResponse,
   JobAccepted,
@@ -30,11 +33,13 @@ import {
   ChatResponse as ChatResponseSchema,
   JobAccepted as JobAcceptedSchema,
   JobStatusResponse as JobStatusSchema,
+  RagAdminDetailResponse as RagAdminDetailResponseSchema,
   RagDocsResponse as RagDocsSchema,
   RagDeleteResponse as RagDeleteResponseSchema,
   RagListResponse as RagListSchema,
   RagUploadAccepted as RagUploadAcceptedSchema,
   RagCreateResponse as RagCreateResponseSchema,
+  RagUpdateResponse as RagUpdateResponseSchema,
   RagUserUpsertResponse as RagUserUpsertResponseSchema,
   UsersListResponse as UsersListSchema,
   RagUsersResponse as RagUsersSchema,
@@ -71,7 +76,10 @@ export async function me(token: string) {
   });
 }
 
-export async function listRags(token: string, params?: { limit?: number; cursor?: string }) {
+export async function listRags(
+  token: string,
+  params?: { limit?: number; cursor?: string },
+) {
   const search = new URLSearchParams();
   if (params?.limit) search.set("limit", String(params.limit));
   if (params?.cursor) search.set("cursor", params.cursor);
@@ -84,7 +92,10 @@ export async function listRags(token: string, params?: { limit?: number; cursor?
   });
 }
 
-export async function listPublicRags(params?: { limit?: number; cursor?: string }) {
+export async function listPublicRags(params?: {
+  limit?: number;
+  cursor?: string;
+}) {
   const search = new URLSearchParams();
   if (params?.limit) search.set("limit", String(params.limit));
   if (params?.cursor) search.set("cursor", params.cursor);
@@ -96,7 +107,10 @@ export async function listPublicRags(params?: { limit?: number; cursor?: string 
   });
 }
 
-export async function listAdminRags(token: string, params?: { limit?: number; cursor?: string }) {
+export async function listAdminRags(
+  token: string,
+  params?: { limit?: number; cursor?: string },
+) {
   const search = new URLSearchParams();
   if (params?.limit) search.set("limit", String(params.limit));
   if (params?.cursor) search.set("cursor", params.cursor);
@@ -106,6 +120,26 @@ export async function listAdminRags(token: string, params?: { limit?: number; cu
     method: "GET",
     token,
     schema: RagListSchema,
+  });
+}
+
+export async function getAdminRag(token: string, ragSlug: string) {
+  const search = new URLSearchParams({ rag_slug: ragSlug });
+  return request<RagAdminDetailResponse>({
+    path: `/admin/rag?${search.toString()}`,
+    method: "GET",
+    token,
+    schema: RagAdminDetailResponseSchema,
+  });
+}
+
+export async function updateAdminRag(token: string, body: RagUpdateRequest) {
+  return request<RagUpdateResponse>({
+    path: "/admin/rag",
+    method: "PATCH",
+    token,
+    body,
+    schema: RagUpdateResponseSchema,
   });
 }
 
@@ -128,7 +162,11 @@ export async function getPublicRagDocs(ragSlug: string) {
   });
 }
 
-export async function uploadRagDocs(token: string, ragSlug: string, files: File[]) {
+export async function uploadRagDocs(
+  token: string,
+  ragSlug: string,
+  files: File[],
+) {
   const form = new FormData();
   form.append("rag_slug", ragSlug);
   files.forEach((file) => form.append("files", file));
@@ -227,7 +265,11 @@ export async function removeRagUser(token: string, body: RagUserUpsertRequest) {
   });
 }
 
-export async function deleteRag(token: string, ragSlug: string, confirmation: string) {
+export async function deleteRag(
+  token: string,
+  ragSlug: string,
+  confirmation: string,
+) {
   return request<RagDeleteResponse>({
     path: "/rag/delete",
     method: "POST",
@@ -237,7 +279,10 @@ export async function deleteRag(token: string, ragSlug: string, confirmation: st
   });
 }
 
-export async function adminListUsers(token: string, params?: { limit?: number; cursor?: string }) {
+export async function adminListUsers(
+  token: string,
+  params?: { limit?: number; cursor?: string },
+) {
   const search = new URLSearchParams();
   if (params?.limit) search.set("limit", String(params.limit));
   if (params?.cursor) search.set("cursor", params.cursor);
@@ -284,7 +329,10 @@ export async function createRag(token: string, body: RagCreateRequest) {
 
 // ---- Admin LLM runtime config ----
 export async function adminGetLLMConfig(token: string) {
-  return request<{ config: import("@/schemas").LLMConfigView; corr_id: string}>({
+  return request<{
+    config: import("@/schemas").LLMConfigView;
+    corr_id: string;
+  }>({
     path: "/admin/llm/config",
     method: "GET",
     token,
@@ -292,7 +340,11 @@ export async function adminGetLLMConfig(token: string) {
   });
 }
 
-export async function adminTestLLMConfig(token: string, body: import("@/schemas").LLMConfigTestRequest, opts?: { signal?: AbortSignal }) {
+export async function adminTestLLMConfig(
+  token: string,
+  body: import("@/schemas").LLMConfigTestRequest,
+  opts?: { signal?: AbortSignal },
+) {
   return request<import("@/schemas").LLMConfigTestResult>({
     path: "/admin/llm/config/test",
     method: "POST",
@@ -303,7 +355,10 @@ export async function adminTestLLMConfig(token: string, body: import("@/schemas"
   });
 }
 
-export async function adminSaveLLMConfig(token: string, body: import("@/schemas").LLMConfigUpdateRequest) {
+export async function adminSaveLLMConfig(
+  token: string,
+  body: import("@/schemas").LLMConfigUpdateRequest,
+) {
   return request<import("@/schemas").LLMConfigResponse>({
     path: "/admin/llm/config",
     method: "PUT",

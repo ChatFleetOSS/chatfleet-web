@@ -4,6 +4,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { AdminSection } from "@/components/admin/admin-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { createRag, getJob, uploadRagDocs } from "@/lib/apiClient";
 import { ApiError } from "@/lib/errors";
+import {
+  DEFAULT_RAG_SYSTEM_PROMPT,
+  RAG_SYSTEM_PROMPT_MAX_LENGTH,
+} from "@/schemas";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -42,10 +47,13 @@ export default function AdminRagCreatePage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<"idle" | "queued" | "running" | "done" | "error">("idle");
+  const [jobStatus, setJobStatus] = useState<
+    "idle" | "queued" | "running" | "done" | "error"
+  >("idle");
   const [jobProgress, setJobProgress] = useState<number | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const [jobTotals, setJobTotals] = useState<{
@@ -68,6 +76,7 @@ export default function AdminRagCreatePage() {
       slug: string;
       name: string;
       description: string;
+      systemPrompt: string;
       visibility: "private" | "public";
       files: File[];
     }) => {
@@ -81,6 +90,7 @@ export default function AdminRagCreatePage() {
         slug: payload.slug,
         name: payload.name,
         description: payload.description,
+        system_prompt: payload.systemPrompt.trim() || undefined,
         visibility: payload.visibility,
       });
 
@@ -108,13 +118,16 @@ export default function AdminRagCreatePage() {
     },
     onError: (err) => {
       setJobStatus("error");
-      const msg = err instanceof ApiError ? err.message : (err as Error).message;
+      const msg =
+        err instanceof ApiError ? err.message : (err as Error).message;
       setJobError(msg);
       setError(msg);
     },
   });
 
-  const shouldPollJob = Boolean(jobId && jobStatus !== "done" && jobStatus !== "error");
+  const shouldPollJob = Boolean(
+    jobId && jobStatus !== "done" && jobStatus !== "error",
+  );
   const pendingRagName = createdName ?? name.trim();
   const pendingRagSlug = createdSlug ?? slug;
   const showSuccess = dialogOpen && jobStatus === "done" && suggestionsReady;
@@ -128,7 +141,8 @@ export default function AdminRagCreatePage() {
         if (!token || !jobId) return;
         const json = await getJob(token, jobId);
         const status = json.status as typeof jobStatus;
-        const progress = typeof json.progress === "number" ? json.progress : null;
+        const progress =
+          typeof json.progress === "number" ? json.progress : null;
         const totals =
           json.totals && typeof json.totals === "object"
             ? {
@@ -191,6 +205,7 @@ export default function AdminRagCreatePage() {
       slug,
       name: trimmedName,
       description: trimmedDescription,
+      systemPrompt,
       visibility,
       files,
     });
@@ -214,7 +229,7 @@ export default function AdminRagCreatePage() {
         </div>
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
           <header className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
               {t("adminCreate.overview")}
             </p>
             <h1 className="text-2xl font-semibold text-foreground">
@@ -233,7 +248,7 @@ export default function AdminRagCreatePage() {
             >
               <div className="space-y-4 text-sm text-muted-foreground">
                 <div className="flex flex-col gap-1 text-foreground">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  <label className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
                     {t("adminCreate.nameLabel")}
                   </label>
                   <Input
@@ -244,15 +259,15 @@ export default function AdminRagCreatePage() {
                   />
                 </div>
                 <div className="flex flex-col gap-1 text-foreground">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  <label className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
                     {t("adminCreate.descriptionLabel")}
                   </label>
-                  <textarea
+                  <Textarea
                     placeholder={t("adminCreate.descriptionPlaceholder")}
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     disabled={createMutation.isPending || dialogOpen}
-                    className="min-h-[96px] rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="min-h-24 text-foreground"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -260,6 +275,40 @@ export default function AdminRagCreatePage() {
                   <code className="rounded bg-muted px-1 py-[1px] text-[11px]">
                     {slug || "—"}
                   </code>
+                </p>
+              </div>
+            </AdminSection>
+
+            <AdminSection
+              title={t("adminCreate.sections.promptTitle")}
+              description={t("adminCreate.sections.promptDescription")}
+              defaultOpen
+            >
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex flex-col gap-2 text-foreground">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <label
+                      className="text-xs tracking-[0.3em] text-muted-foreground uppercase"
+                      htmlFor="system-prompt"
+                    >
+                      {t("adminCreate.promptLabel")}
+                    </label>
+                    <span className="text-xs text-muted-foreground">
+                      {systemPrompt.length} / {RAG_SYSTEM_PROMPT_MAX_LENGTH}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="system-prompt"
+                    placeholder={DEFAULT_RAG_SYSTEM_PROMPT}
+                    value={systemPrompt}
+                    onChange={(event) => setSystemPrompt(event.target.value)}
+                    disabled={createMutation.isPending || dialogOpen}
+                    maxLength={RAG_SYSTEM_PROMPT_MAX_LENGTH}
+                    className="min-h-48 resize-y font-mono text-xs leading-5 text-foreground md:text-xs"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("adminCreate.promptHelp")}
                 </p>
               </div>
             </AdminSection>
@@ -280,20 +329,31 @@ export default function AdminRagCreatePage() {
                   {t("adminCreate.documentsHelp")}
                 </p>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted-foreground" htmlFor="visibility">
+                  <label
+                    className="text-xs tracking-[0.3em] text-muted-foreground uppercase"
+                    htmlFor="visibility"
+                  >
                     {t("adminCreate.visibilityLabel")}
                   </label>
                   <select
                     id="visibility"
                     value={visibility}
-                    onChange={(e) => setVisibility(e.target.value as "private" | "public")}
+                    onChange={(e) =>
+                      setVisibility(e.target.value as "private" | "public")
+                    }
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
                     disabled={createMutation.isPending || dialogOpen}
                   >
-                    <option value="private">{t("adminCreate.visibilityPrivate")}</option>
-                    <option value="public">{t("adminCreate.visibilityPublic")}</option>
+                    <option value="private">
+                      {t("adminCreate.visibilityPrivate")}
+                    </option>
+                    <option value="public">
+                      {t("adminCreate.visibilityPublic")}
+                    </option>
                   </select>
-                  <p className="text-xs text-muted-foreground">{t("adminCreate.visibilityHelp")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("adminCreate.visibilityHelp")}
+                  </p>
                 </div>
                 {jobId ? (
                   <p className="text-xs text-muted-foreground">
@@ -316,22 +376,22 @@ export default function AdminRagCreatePage() {
                 <ArrowLeftIcon aria-hidden="true" className="size-4" />
                 <span>{t("common.cancel")}</span>
               </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || dialogOpen}
-              className="flex items-center gap-2"
-            >
-              <PlusIcon aria-hidden="true" className="size-4" />
-              <span>
-                {createMutation.isPending
-                  ? t("adminCreate.creating")
-                  : t("common.createRag")}
-              </span>
-            </Button>
-          </div>
-        </form>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || dialogOpen}
+                className="flex items-center gap-2"
+              >
+                <PlusIcon aria-hidden="true" className="size-4" />
+                <span>
+                  {createMutation.isPending
+                    ? t("adminCreate.creating")
+                    : t("common.createRag")}
+                </span>
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
 
       <Dialog
         open={dialogOpen}
@@ -358,8 +418,8 @@ export default function AdminRagCreatePage() {
               {showSuccess
                 ? t("adminCreate.successTitle")
                 : showError
-                ? t("adminCreate.errorTitle")
-                : t("adminCreate.processingTitle")}
+                  ? t("adminCreate.errorTitle")
+                  : t("adminCreate.processingTitle")}
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground">
               {showSuccess
@@ -368,11 +428,11 @@ export default function AdminRagCreatePage() {
                     slug: pendingRagSlug,
                   })
                 : showError
-                ? jobError || t("adminCreate.errorBody")
-                : t("adminCreate.processingBody", {
-                    name: pendingRagName || pendingRagSlug,
-                    slug: pendingRagSlug,
-                  })}
+                  ? jobError || t("adminCreate.errorBody")
+                  : t("adminCreate.processingBody", {
+                      name: pendingRagName || pendingRagSlug,
+                      slug: pendingRagSlug,
+                    })}
             </DialogDescription>
             {showProcessing ? (
               <p className="text-sm text-muted-foreground">

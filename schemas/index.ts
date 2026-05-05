@@ -19,6 +19,15 @@ export const RagSlug = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be lowercase URL-safe");
 
 export const Role = z.enum(["user", "admin"]);
+export const Visibility = z.enum(["private", "public"]);
+export type Visibility = z.infer<typeof Visibility>;
+export const RAG_SYSTEM_PROMPT_MAX_LENGTH = 4000;
+export const DEFAULT_RAG_SYSTEM_PROMPT =
+  "You are a helpful and warm assistant. Use ONLY the provided context. " +
+  "Every claim must be supported by the context; do not add generic advice or steps that are not present in the excerpts. " +
+  "Do not add external or prior knowledge. If the context is thin, give a short, cautious answer and state that more detail is not available in the excerpts. " +
+  "If the answer is long, provide a structured synthesis in 5 to 8 points maximum (with sub-points if needed). " +
+  "Respond in the user's language using GitHub-flavored Markdown.";
 
 /** ------------------ errors ------------------ */
 export const ErrorEnvelope = z.object({
@@ -75,9 +84,7 @@ export const AdminCreateUserRequest = z.object({
   role: Role,
   rags: z.array(RagSlug).optional(),
 });
-export type AdminCreateUserRequest = z.infer<
-  typeof AdminCreateUserRequest
->;
+export type AdminCreateUserRequest = z.infer<typeof AdminCreateUserRequest>;
 
 /** ------------------ RAGs ------------------ */
 export const RagSummary = z.object({
@@ -86,10 +93,15 @@ export const RagSummary = z.object({
   description: z.string(),
   chunks: z.number().int().min(0),
   last_updated: ISODate,
-  visibility: z.enum(["private", "public"]).default("private"),
+  visibility: Visibility.default("private"),
   suggestions: z.array(z.string()).default([]),
 });
 export type RagSummary = z.infer<typeof RagSummary>;
+
+export const RagAdminDetail = RagSummary.extend({
+  system_prompt: z.string().max(RAG_SYSTEM_PROMPT_MAX_LENGTH),
+});
+export type RagAdminDetail = z.infer<typeof RagAdminDetail>;
 
 export const RagListResponse = z.object({
   items: z.array(RagSummary),
@@ -98,19 +110,50 @@ export const RagListResponse = z.object({
 });
 export type RagListResponse = z.infer<typeof RagListResponse>;
 
+export const RagAdminDetailResponse = z.object({
+  rag: RagAdminDetail,
+  corr_id: UUID,
+});
+export type RagAdminDetailResponse = z.infer<typeof RagAdminDetailResponse>;
+
 export const RagCreateRequest = z.object({
   slug: RagSlug,
   name: z.string().min(1, "Name is required").max(120),
   description: z.string().min(1, "Description is required").max(500),
-  visibility: z.enum(["private", "public"]).default("private"),
+  visibility: Visibility.default("private"),
+  system_prompt: z.string().max(RAG_SYSTEM_PROMPT_MAX_LENGTH).optional(),
 });
 export type RagCreateRequest = z.infer<typeof RagCreateRequest>;
 
 export const RagCreateResponse = z.object({
-  rag: RagSummary,
+  rag: RagAdminDetail,
   corr_id: UUID,
 });
 export type RagCreateResponse = z.infer<typeof RagCreateResponse>;
+
+export const RagUpdateRequest = z
+  .object({
+    rag_slug: RagSlug,
+    name: z.string().min(1).max(120).optional(),
+    description: z.string().max(500).optional(),
+    visibility: Visibility.optional(),
+    system_prompt: z.string().max(RAG_SYSTEM_PROMPT_MAX_LENGTH).optional(),
+  })
+  .refine(
+    (value) =>
+      value.name !== undefined ||
+      value.description !== undefined ||
+      value.visibility !== undefined ||
+      value.system_prompt !== undefined,
+    "Provide at least one RAG metadata field to update",
+  );
+export type RagUpdateRequest = z.infer<typeof RagUpdateRequest>;
+
+export const RagUpdateResponse = z.object({
+  rag: RagAdminDetail,
+  corr_id: UUID,
+});
+export type RagUpdateResponse = z.infer<typeof RagUpdateResponse>;
 
 export const DocStatusEnum = z.enum([
   "uploaded",
@@ -193,7 +236,7 @@ export const RagUsersResponse = z.object({
       email: Email,
       name: z.string(),
       role: Role,
-    })
+    }),
   ),
   corr_id: UUID,
 });
@@ -272,9 +315,21 @@ export const ChatResponse = z.object({
 export type ChatResponse = z.infer<typeof ChatResponse>;
 
 /** ------------------ jobs / admin ------------------ */
-export const JobType = z.enum(["RAG_INDEX", "RAG_REBUILD", "RAG_RESET", "CHAT_COMPLETION"]);
+export const JobType = z.enum([
+  "RAG_INDEX",
+  "RAG_REBUILD",
+  "RAG_RESET",
+  "CHAT_COMPLETION",
+]);
 export const JobState = z.enum(["queued", "running", "done", "error"]);
-export const JobPhase = z.enum(["queued", "chunking", "embedding", "indexing", "suggestions", "finalizing"]);
+export const JobPhase = z.enum([
+  "queued",
+  "chunking",
+  "embedding",
+  "indexing",
+  "suggestions",
+  "finalizing",
+]);
 
 export const JobTotals = z.object({
   docs_total: z.number().int().min(0),
