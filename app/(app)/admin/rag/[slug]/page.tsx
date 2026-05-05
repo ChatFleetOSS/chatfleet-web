@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -15,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ArrowLeftIcon,
+  CheckCircle2Icon,
   UploadIcon,
   RefreshCwIcon,
   Undo2Icon,
@@ -267,6 +269,7 @@ export default function AdminRagDetailPage() {
     ragDetailQuery.data?.rag.system_prompt ?? DEFAULT_RAG_SYSTEM_PROMPT;
   const promptTooLong = systemPromptDraft.length > RAG_SYSTEM_PROMPT_MAX_LENGTH;
   const promptDirty = systemPromptDraft !== currentSystemPrompt;
+  const promptSaved = Boolean(systemPromptSavedMessage) && !promptDirty;
 
   useEffect(() => {
     if (ragDetailQuery.data?.rag.system_prompt !== undefined) {
@@ -440,47 +443,70 @@ export default function AdminRagDetailPage() {
                   {t("adminRag.prompt.help")}
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSystemPromptDraft(DEFAULT_RAG_SYSTEM_PROMPT);
-                    setSystemPromptSavedMessage(null);
-                  }}
-                  disabled={
-                    promptMutation.isPending ||
-                    systemPromptDraft === DEFAULT_RAG_SYSTEM_PROMPT
-                  }
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  id="rag-system-prompt-status"
+                  aria-live="polite"
+                  className="min-h-9"
                 >
-                  {t("adminRag.prompt.reset")}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => promptMutation.mutate()}
-                  disabled={
-                    promptMutation.isPending || !promptDirty || promptTooLong
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <SaveIcon aria-hidden="true" className="size-4" />
-                  <span>
-                    {promptMutation.isPending
-                      ? t("common.saving")
-                      : t("adminRag.prompt.save")}
-                  </span>
-                </Button>
-              </div>
-              <div id="rag-system-prompt-status" aria-live="polite">
-                {promptMutation.isError ? (
-                  <p className="text-xs text-destructive">
-                    {(promptMutation.error as Error).message}
-                  </p>
-                ) : systemPromptSavedMessage ? (
-                  <p className="text-xs text-muted-foreground">
-                    {systemPromptSavedMessage}
-                  </p>
-                ) : null}
+                  {promptMutation.isError ? (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {(promptMutation.error as Error).message}
+                    </div>
+                  ) : promptSaved ? (
+                    <div className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                      <CheckCircle2Icon aria-hidden="true" className="size-4" />
+                      <span>{systemPromptSavedMessage}</span>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSystemPromptDraft(DEFAULT_RAG_SYSTEM_PROMPT);
+                      setSystemPromptSavedMessage(null);
+                    }}
+                    disabled={
+                      promptMutation.isPending ||
+                      systemPromptDraft === DEFAULT_RAG_SYSTEM_PROMPT
+                    }
+                  >
+                    {t("adminRag.prompt.reset")}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => promptMutation.mutate()}
+                    disabled={
+                      promptMutation.isPending || !promptDirty || promptTooLong
+                    }
+                    className={cn(
+                      "flex items-center gap-2",
+                      promptSaved &&
+                        "border border-emerald-200 bg-emerald-600 text-white opacity-100 disabled:opacity-100",
+                    )}
+                  >
+                    {promptMutation.isPending ? (
+                      <Spinner
+                        aria-hidden="true"
+                        size="xs"
+                        className="text-primary-foreground"
+                      />
+                    ) : promptSaved ? (
+                      <CheckCircle2Icon aria-hidden="true" className="size-4" />
+                    ) : (
+                      <SaveIcon aria-hidden="true" className="size-4" />
+                    )}
+                    <span>
+                      {promptMutation.isPending
+                        ? t("common.saving")
+                        : promptSaved
+                          ? t("adminRag.prompt.savedButton")
+                          : t("adminRag.prompt.save")}
+                    </span>
+                  </Button>
+                </div>
               </div>
             </div>
           )}

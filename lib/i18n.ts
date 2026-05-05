@@ -203,6 +203,7 @@ export const translations = {
     "adminRag.prompt.save": "Save prompt",
     "adminRag.prompt.reset": "Reset to default",
     "adminRag.prompt.saved": "Prompt saved.",
+    "adminRag.prompt.savedButton": "Saved",
     "adminRag.docs.title": "Document ingestion",
     "adminRag.docs.instructions":
       "Accepted formats: PDF, DOCX, TXT, ODT, ODS, or ODP. Maximum size is enforced by the backend.",
@@ -581,6 +582,7 @@ export const translations = {
     "adminRag.prompt.save": "Enregistrer le prompt",
     "adminRag.prompt.reset": "Réinitialiser par défaut",
     "adminRag.prompt.saved": "Prompt enregistré.",
+    "adminRag.prompt.savedButton": "Enregistré",
     "adminRag.docs.title": "Ingestion de documents",
     "adminRag.docs.instructions":
       "Formats acceptés : PDF, DOCX, TXT, ODT, ODS ou ODP. La taille maximale est contrôlée par le backend.",
