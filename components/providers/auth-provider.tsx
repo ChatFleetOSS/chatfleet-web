@@ -56,8 +56,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const login = useCallback(
     async (payload: LoginRequest) => {
       setStatus("loading");
-      const res = await API.login(payload);
-      sync(res.token, res.user);
+      try {
+        const res = await API.login(payload);
+        sync(res.token, res.user);
+      } catch (err) {
+        setStoredToken(null);
+        setToken(null);
+        setUser(null);
+        setStatus("unauthenticated");
+        throw err;
+      }
     },
     [sync],
   );
@@ -65,8 +73,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const register = useCallback(
     async (payload: RegisterRequest) => {
       setStatus("loading");
-      const res = await API.register(payload);
-      sync(res.token, res.user);
+      try {
+        const res = await API.register(payload);
+        sync(res.token, res.user);
+      } catch (err) {
+        setStoredToken(null);
+        setToken(null);
+        setUser(null);
+        setStatus("unauthenticated");
+        throw err;
+      }
     },
     [sync],
   );

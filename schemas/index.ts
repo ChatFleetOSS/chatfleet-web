@@ -373,6 +373,52 @@ export type AdminConfigResponse = z.infer<typeof AdminConfigResponse>;
 /** ------------------ admin llm config ------------------ */
 export const LLMProvider = z.enum(["openai", "vllm"]);
 export const EmbedProvider = z.enum(["openai", "local"]);
+export const RetrievalMode = z.enum(["hybrid", "semantic"]);
+
+const RetrievalDefaults = {
+  mode: "hybrid",
+  top_k_default: 12,
+  semantic_min_score: 0.2,
+  candidate_multiplier: 4,
+  candidate_min: 24,
+  rrf_k: 60,
+  semantic_weight: 1,
+  lexical_weight: 1,
+  bm25_k1: 1.5,
+  bm25_b: 0.75,
+  lexical_prewarm: false,
+} as const;
+
+export const RetrievalConfig = z.object({
+  mode: RetrievalMode.default("hybrid"),
+  top_k_default: z.number().int().min(1).max(200).default(12),
+  semantic_min_score: z.number().min(0).max(1).default(0.2),
+  candidate_multiplier: z.number().int().min(1).max(10).default(4),
+  candidate_min: z.number().int().min(1).max(200).default(24),
+  rrf_k: z.number().int().min(1).max(200).default(60),
+  semantic_weight: z.number().min(0).max(5).default(1),
+  lexical_weight: z.number().min(0).max(5).default(1),
+  bm25_k1: z.number().min(0.1).max(3).default(1.5),
+  bm25_b: z.number().min(0).max(1).default(0.75),
+  lexical_prewarm: z.boolean().default(false),
+}).refine((value) => value.semantic_weight > 0 || value.lexical_weight > 0, {
+  message: "At least one retrieval weight must be greater than 0",
+  path: ["semantic_weight"],
+});
+export type RetrievalConfig = z.infer<typeof RetrievalConfig>;
+
+export const RetrievalConfigUpdate = RetrievalConfig.partial().refine(
+  (value) =>
+    value.semantic_weight === undefined ||
+    value.lexical_weight === undefined ||
+    value.semantic_weight > 0 ||
+    value.lexical_weight > 0,
+  {
+    message: "At least one retrieval weight must be greater than 0",
+    path: ["semantic_weight"],
+  },
+);
+export type RetrievalConfigUpdate = z.infer<typeof RetrievalConfigUpdate>;
 
 export const LLMConfigView = z.object({
   provider: LLMProvider,
@@ -382,6 +428,7 @@ export const LLMConfigView = z.object({
   embed_provider: EmbedProvider.default("openai"),
   temperature_default: z.number().default(0.2),
   top_k_default: z.number().int().default(6),
+  retrieval: RetrievalConfig.default(RetrievalDefaults),
   index_dir: z.string(),
   upload_dir: z.string(),
   max_upload_mb: z.number().int().default(50),
@@ -406,6 +453,7 @@ export const LLMConfigUpdateRequest = z.object({
   embed_provider: EmbedProvider.default("openai"),
   temperature_default: z.number().optional(),
   top_k_default: z.number().int().optional(),
+  retrieval: RetrievalConfigUpdate.optional(),
   index_dir: z.string().optional(),
   upload_dir: z.string().optional(),
   max_upload_mb: z.number().int().optional(),

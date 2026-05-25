@@ -5,7 +5,15 @@ import { z } from "zod";
 
 const ReadyEvent = z.object({ corr_id: UUID });
 const ChunkEvent = z.object({ delta: z.string() });
-const CitationsEvent = z.array(CitationSchema);
+const CitationsEvent = z.union([
+  z.array(CitationSchema),
+  z
+    .object({
+      citations: z.array(CitationSchema),
+      corr_id: UUID.optional(),
+    })
+    .passthrough(),
+]);
 const DoneEvent = z.object({ usage: UsageSchema });
 const ErrorEvent = z.object({ error: z.any(), corr_id: UUID }).passthrough();
 
@@ -115,7 +123,10 @@ export async function* streamChatPublic(
         if (!data) continue;
         const parsed = CitationsEvent.safeParse(JSON.parse(data));
         if (!parsed.success) continue;
-        yield { type: "citations", citations: parsed.data };
+        const citations = Array.isArray(parsed.data)
+          ? parsed.data
+          : parsed.data.citations;
+        yield { type: "citations", citations };
         break;
       }
       case "done": {

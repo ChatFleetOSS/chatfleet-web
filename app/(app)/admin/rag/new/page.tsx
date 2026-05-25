@@ -103,7 +103,17 @@ export default function AdminRagCreatePage() {
         setJobId(uploadResponse.job_id);
         setJobStatus("queued");
       } else {
+        setJobId(null);
         setJobStatus("done");
+        setJobProgress(1);
+        setJobTotals({
+          docs_total: 0,
+          docs_done: 0,
+          chunks_total: 0,
+          chunks_done: 0,
+        });
+        setJobPhase("finalizing");
+        setSuggestionsReady(true);
       }
 
       return createResponse.rag;
